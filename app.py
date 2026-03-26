@@ -210,10 +210,10 @@ elif choice == "學校帳號登入":
 
     if auth_mode == "學校帳號登入":
         st.subheader("🔑 學校帳號登入")
-        email = st.text_input("帳號 (Email)")
+        email = st.text_input("帳號 (電話號碼)")
         pwd = st.text_input("密碼", type="password")
         if st.button("確認登入"):
-            res = supabase.table("schools").select("*").eq("email", email).eq("password", pwd).execute()
+            res = supabase.table("schools").select("*").eq("phone", email).eq("password", pwd).execute()
             if res.data:
                 st.session_state.logged_in = True
                 st.session_state.school_info = res.data[0]
@@ -226,41 +226,58 @@ elif choice == "學校帳號登入":
         # --- 註冊功能 (全新邏輯) ---
         st.subheader("📝 建立學校帳號")
         
-        # 學校列表 - 按分區分組
-        school_options = [
-            "北一區 國立羅東高級中學", "北一區 國立蘭陽女子高級中學", "北一區 國立花蓮高級中學", 
-            "北一區 慈濟大學附屬高級中學", "北一區 國立基隆高級中學", "北一區 新北市立中和高級中學",
-            "北一區 新北市立北大高級中學", "北一區 新北市立石碇高級中學", "北一區 新北市立板橋高中",
-            "北一區 新北市立錦和高級中學", "北一區 新北市私立徐匯高級中學", "北一區 新北市金陵女子高級中學",
-            "北一區 新北市南山高級中學", "北二區 國立臺灣師範大學附屬高級中學", "北二區 臺北市立中山女子高級中學",
-            "北二區 臺北市立中正高級中學", "北二區 臺北市立中崙高級中學", "北二區 臺北市立內湖高級中學",
-            "北二區 臺北市立永春高級中學", "北二區 臺北市立百齡高級中學", "北二區 臺北市立育成高級中學",
-            "北二區 臺北市立松山高級中學", "北二區 臺北市立建國高級中學", "北二區 臺北市立第一女子高級中學",
-            "北二區 臺北市立景美女子高級中學", "北二區 臺北市立陽明高級中學", "北二區 臺北市立萬芳高級中學",
-            "北二區 臺北市立麗山高級中學", "北二區 臺北市數位實驗高級中等學校", "北三區 桃園市立內壢高級中等學校",
-            "北三區 桃園市立桃園高級中等學校", "北三區 桃園市立陽明高級中等學校", "北三區 桃園市立楊梅高級中等學校",
-            "北三區 桃園市立壽山高級中等學校", "北三區 國立新竹女子高級中學", "北三區 新竹市私立曙光女子高級中學",
-            "中區 國立溪湖高級中學", "中區 臺中市立大甲高級中等學校", "中區 臺中市立中港高級中學",
-            "中區 臺中市立文華高級中學", "中區 臺中市立清水高級中學", "中區 臺中市立第一高級中學",
-            "中區 臺中市立第二高級中學", "中區 臺中市立惠文高級中學", "中區 臺中市立新社高級中學",
-            "中區 臺中市立臺中女子高級中等學校", "中區 臺中市私立弘文高級中學", "中區 國立竹山高級中學",
-            "中區 國立斗六高級中學", "中區 國立嘉義女子高級中學", "中區 國立嘉義高級中學",
-            "中區 嘉義縣立竹崎高級中學", "南區 國立臺南第一高級中學", "南區 國立臺南第二高級中學",
-            "南區 臺南市天主教聖功女子高級中學", "南區 臺南市立大灣高級中學", "南區 臺南市立永仁高級中學",
-            "南區 臺南市光華高級中學", "南區 臺南市私立南光高級中學", "南區 臺南市德光高級中學",
-            "南區 高雄市立三民高級中學", "南區 高雄市立中山高級中學", "南區 高雄市立前鎮高級中學",
-            "南區 高雄市立高雄女子高級中學", "南區 高雄市立路竹高級中學", "南區 國立中山大學附屬國光高級中學",
-            "南區 國立屏東女子高級中學", "南區 國立潮州高級中學", "南區 國立臺東高級中學"
-        ]
+        # 按分區分組的學校列表
+        schools_by_district = {
+            "北一區": [
+                "國立羅東高級中學", "國立蘭陽女子高級中學", "國立花蓮高級中學", 
+                "慈濟大學附屬高級中學", "國立基隆高級中學", "新北市立中和高級中學",
+                "新北市立北大高級中學", "新北市立石碇高級中學", "新北市立板橋高中",
+                "新北市立錦和高級中學", "新北市私立徐匯高級中學", "新北市金陵女子高級中學",
+                "新北市南山高級中學"
+            ],
+            "北二區": [
+                "國立臺灣師範大學附屬高級中學", "臺北市立中山女子高級中學",
+                "臺北市立中正高級中學", "臺北市立中崙高級中學", "臺北市立內湖高級中學",
+                "臺北市立永春高級中學", "臺北市立百齡高級中學", "臺北市立育成高級中學",
+                "臺北市立松山高級中學", "臺北市立建國高級中學", "臺北市立第一女子高級中學",
+                "臺北市立景美女子高級中學", "臺北市立陽明高級中學", "臺北市立萬芳高級中學",
+                "臺北市立麗山高級中學", "臺北市數位實驗高級中等學校"
+            ],
+            "北三區": [
+                "桃園市立內壢高級中等學校", "桃園市立桃園高級中等學校", "桃園市立陽明高級中等學校",
+                "桃園市立楊梅高級中等學校", "桃園市立壽山高級中等學校", "國立新竹女子高級中學",
+                "新竹市私立曙光女子高級中學"
+            ],
+            "中區": [
+                "國立溪湖高級中學", "臺中市立大甲高級中等學校", "臺中市立中港高級中學",
+                "臺中市立文華高級中學", "臺中市立清水高級中學", "臺中市立第一高級中學",
+                "臺中市立第二高級中學", "臺中市立惠文高級中學", "臺中市立新社高級中學",
+                "臺中市立臺中女子高級中等學校", "臺中市私立弘文高級中學", "國立竹山高級中學",
+                "國立斗六高級中學", "國立嘉義女子高級中學", "國立嘉義高級中學",
+                "嘉義縣立竹崎高級中學"
+            ],
+            "南區": [
+                "國立臺南第一高級中學", "國立臺南第二高級中學", "臺南市天主教聖功女子高級中學",
+                "臺南市立大灣高級中學", "臺南市立永仁高級中學", "臺南市光華高級中學",
+                "臺南市私立南光高級中學", "臺南市德光高級中學", "高雄市立三民高級中學",
+                "高雄市立中山高級中學", "高雄市立前鎮高級中學", "高雄市立高雄女子高級中學",
+                "高雄市立路竹高級中學", "國立中山大學附屬國光高級中學", "國立屏東女子高級中學",
+                "國立潮州高級中學", "國立臺東高級中學"
+            ]
+        }
         
-        selected_school = st.selectbox("1. 選擇學校", school_options)
+        # 第一步：選擇分區
+        selected_district = st.selectbox("1. 選擇分區", list(schools_by_district.keys()))
         
-        # 分離分區和學校名稱
-        district = selected_school.split(' ')[0]
-        school_name = ' '.join(selected_school.split(' ')[1:])
+        # 第二步：選擇該分區下的學校
+        schools_in_district = schools_by_district[selected_district]
+        selected_school = st.selectbox("2. 選擇學校", schools_in_district)
+        
+        district = selected_district
+        school_name = selected_school
         
         # 學校電話作為帳號
-        school_phone = st.text_input("2. 學校電話 (帳號)", placeholder="例：073475181", max_chars=10)
+        school_phone = st.text_input("3. 學校電話 (帳號)", placeholder="例：073475181", max_chars=10)
         
         # 自動生成預設密碼（電話後4碼）
         default_password = school_phone[-4:] if len(school_phone) >= 4 else ""
@@ -268,7 +285,7 @@ elif choice == "學校帳號登入":
         st.info(f"📞 預設密碼：{default_password if default_password else '請輸入完整電話號碼'}")
         
         # 聯絡人資訊
-        st.write("### 3. 聯絡人資訊")
+        st.write("### 4. 聯絡人資訊")
         handler_email = st.text_input("承辦人 Email")
         academic_director_email = st.text_input("教務主任 Email")
         principal_email = st.text_input("校長 Email")
@@ -293,7 +310,7 @@ elif choice == "學校帳號登入":
                     # 檢查電話號碼是否已被使用
                     existing_phone = supabase.table("schools")\
                         .select("*")\
-                        .eq("email", school_phone)\
+                        .eq("phone", school_phone)\
                         .execute()
                     
                     if existing_phone.data:
@@ -302,11 +319,9 @@ elif choice == "學校帳號登入":
                         new_school = {
                             "name": school_name,
                             "district": district,
-                            "registrant_name": school_name,  # 用學校名稱作為註冊者
-                            "email": school_phone,  # 電話作為帳號
-                            "password": default_password,  # 預設密碼
-                            "identity": "學校帳號",
-                            "handler_email": handler_email,
+                            "phone": school_phone,
+                            "password": default_password,
+                            "handler_email": handler_email,  # 這裡的 Key 必須跟資料庫欄位名稱一模一樣
                             "academic_director_email": academic_director_email,
                             "principal_email": principal_email,
                             "is_host": True,
@@ -394,11 +409,12 @@ elif choice == "學校基本資料":
         col1, col2 = st.columns(2)
         
         with col1:
-            st.info(f"📞 帳號（電話）：{school['email']}")
-            st.info(f"🏫 分區：{school.get('district', '未設定')}")
+            st.info(f"📞 帳號（電話）：{school['phone']}")
+            st.info(f"🏫 學校：{school['name']}")
+            st.info(f"🗺️ 分區：{school.get('district', '未設定')}")
             
         with col2:
-            st.info(f"📧 承辦人 Email：{school.get('handler_email', '未設定')}")
+            st.info(f"📧 承辦人 Email：{school.get('registrant_email', '未設定')}")
             st.info(f"📧 教務主任 Email：{school.get('academic_director_email', '未設定')}")
             st.info(f"📧 校長 Email：{school.get('principal_email', '未設定')}")
         
@@ -407,7 +423,7 @@ elif choice == "學校基本資料":
         
         with st.form("update_school_info"):
             st.write("#### 聯絡人資訊更新")
-            new_handler_email = st.text_input("承辦人 Email", value=school.get('handler_email', ''))
+            new_registrant_email = st.text_input("承辦人 Email", value=school.get('registrant_email', ''))
             new_academic_director_email = st.text_input("教務主任 Email", value=school.get('academic_director_email', ''))
             new_principal_email = st.text_input("校長 Email", value=school.get('principal_email', ''))
             
@@ -419,11 +435,11 @@ elif choice == "學校基本資料":
             col1, col2 = st.columns(2)
             with col1:
                 if st.form_submit_button("更新聯絡資訊"):
-                    if new_handler_email and new_academic_director_email and new_principal_email:
-                        if "@" in new_handler_email and "@" in new_academic_director_email and "@" in new_principal_email:
+                    if new_registrant_email and new_academic_director_email and new_principal_email:
+                        if "@" in new_registrant_email and "@" in new_academic_director_email and "@" in new_principal_email:
                             try:
                                 update_data = {
-                                    "handler_email": new_handler_email,
+                                    "registrant_email": new_registrant_email,
                                     "academic_director_email": new_academic_director_email,
                                     "principal_email": new_principal_email
                                 }
