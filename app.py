@@ -265,9 +265,7 @@ if choice == "課程大廳":
                                                 match_data = {
                                                     "course_id": c['id'],
                                                     "partner_school_id": st.session_state.school_info['id'],
-                                                    "status": "pending",
-                                                    "email_status": "pending",
-                                                    "requested_students": None  # 暫時為空，未來可擴展
+                                                    "status": "pending"
                                                 }
                                                 match_result = supabase.table("matches").insert(match_data).execute()
                                                 match_id = match_result.data[0]['id']
@@ -329,7 +327,7 @@ if choice == "課程大廳":
 申請資訊：
 - 申請課程：{c['title']}
 - 開課學校：{host_school['name']}
-- 申請時間：{match_result.data[0]['created_at'][:16]}
+- 申請編號：{match_result.data[0]['id']}
 
 我們將通知開課學校處理您的申請，請耐心等候回覆。
 
@@ -345,12 +343,10 @@ if choice == "課程大廳":
                                                             email_success = False
                                                             failed_emails.append(f"{recipient['name']} ({recipient['email']})")
                                                 
-                                                # 6. 更新 Email 狀態
+                                                # 6. 顯示 Email 狀態
                                                 if email_success:
-                                                    supabase.table("matches").update({"email_status": "sent"}).eq("id", match_id).execute()
                                                     st.success("✅ 媒合申請已成功提交！所有相關人員都會收到通知 Email。")
                                                 else:
-                                                    supabase.table("matches").update({"email_status": "failed"}).eq("id", match_id).execute()
                                                     st.warning(f"⚠️ 媒合申請已提交，但部分 Email 發送失敗：{', '.join(failed_emails)}")
                                                 
                                                 # 7. 清除表單狀態
@@ -859,7 +855,7 @@ elif choice == "配對情形":
             if my_course_ids:
                 # Step 2: 查詢這些課程收到的申請
                 incoming = supabase.table("matches")\
-                    .select("created_at, status, course_id, partner_school_id")\
+                    .select("id, status, course_id, partner_school_id")\
                     .in_("course_id", my_course_ids)\
                     .execute()
 
@@ -877,7 +873,7 @@ elif choice == "配對情形":
                     for m in incoming.data:
                         course_title = my_course_map.get(m['course_id'], '未知課程')
                         partner_name = partner_map.get(m['partner_school_id'], '未知學校')
-                        st.info(f"📍 **{partner_name}** 在 {m['created_at'][:16]} 申請了您的「{course_title}」（狀態：{m['status']}）")
+                        st.info(f"📍 **{partner_name}** 申請了您的「{course_title}」（狀態：{m['status']}）")
                 else:
                     st.write("目前尚無收到申請。")
             else:
@@ -890,7 +886,7 @@ elif choice == "配對情形":
         try:
             # Step 1: 查詢我申請的 matches（含 course_id）
             outgoing = supabase.table("matches")\
-                .select("created_at, status, course_id")\
+                .select("id, status, course_id")\
                 .eq("partner_school_id", school['id'])\
                 .execute()
 
@@ -913,7 +909,7 @@ elif choice == "配對情形":
                 for m in outgoing.data:
                     course = course_map.get(m['course_id'], {})
                     host_name = host_map.get(course.get('host_school_id'), '未知學校')
-                    st.success(f"🚀 您於 {m['created_at'][:16]} 向 **{host_name}** 申請了「{course.get('title', '未知課程')}」（狀態：{m['status']}）")
+                    st.success(f"🚀 您向 **{host_name}** 申請了「{course.get('title', '未知課程')}」（狀態：{m['status']}）")
             else:
                 st.write("您尚未申請任何課程。")
         except Exception as e:
