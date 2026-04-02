@@ -14,6 +14,27 @@ def hash_password(raw_password: str) -> str:
 def verify_password(raw_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(raw_password, hashed_password)
 
+# 權限控制函數
+def require_login():
+    """要求用戶登入，否則顯示警告並停止執行"""
+    if not st.session_state.get("logged_in"):
+        st.warning("⚠️ 請先登入學校帳號")
+        st.stop()
+
+def require_admin():
+    """要求管理員權限，否則顯示錯誤並停止執行"""
+    if not st.session_state.get("admin_logged_in"):
+        st.error("🚫 您沒有管理權限，請以管理員身份登入")
+        st.stop()
+
+def is_admin():
+    """檢查是否為管理員"""
+    return st.session_state.get("admin_logged_in", False)
+
+def is_logged_in():
+    """檢查是否已登入"""
+    return st.session_state.get("logged_in", False)
+
 # 1. 連接 Supabase (建議將金鑰移至 secrets.toml)
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
@@ -87,10 +108,10 @@ if "logged_in" not in st.session_state:
     st.session_state.school_info = None
 
 # --- 側邊欄選單 ---
-if st.session_state.get("admin_logged_in"):
+if is_admin():
     # 管理員專用選單
     menu = ["課程大廳", "📊 系統管理", "登出"]
-elif not st.session_state.logged_in:
+elif not is_logged_in():
     menu = ["課程大廳", "學校帳號登入"]
 else:
     # 加入「配對情形」和「學校基本資料」
@@ -390,7 +411,7 @@ elif choice == "學校帳號登入":
                 st.info("⚠️ 請確認 st.secrets 中已設定 ADMIN_USER 和 ADMIN_PASSWORD_HASH")
         
         # 如果管理員已登入，顯示創建管理帳號功能
-        if st.session_state.get("admin_logged_in"):
+        if is_admin():
             st.divider()
             st.subheader("👨‍💼 創建管理帳號")
             
@@ -429,6 +450,7 @@ elif choice == "學校帳號登入":
 
 # 修復此處名稱與選單一致
 elif choice == "管理中心 (我的課程)":
+    require_login()  # 要求登入權限
     st.title("⚙️ 學校管理中心")
     if st.session_state.school_info:
         school = st.session_state.school_info
@@ -442,6 +464,7 @@ elif choice == "管理中心 (我的課程)":
             st.info("您目前尚未開設任何課程。")
 
 elif choice == "學校基本資料":
+    require_login()  # 要求登入權限
     st.header("🏫 學校基本資料管理")
     if st.session_state.school_info:
         school = st.session_state.school_info
@@ -520,6 +543,7 @@ elif choice == "學校基本資料":
                         st.error("請填寫所有密碼欄位")
 
 elif choice == "新增/修改課程":
+    require_login()  # 要求登入權限
     st.header("✍️ 上傳/管理您的課程")
     if st.session_state.school_info:
         school = st.session_state.school_info
@@ -551,6 +575,7 @@ elif choice == "新增/修改課程":
                     st.error(f"上傳失敗：{e}")
 
 elif choice == "配對情形":
+    require_login()  # 要求登入權限
     st.header("🤝 課程配對進度追蹤")
     school = st.session_state.school_info
     
@@ -590,6 +615,7 @@ elif choice == "配對情形":
 
 # 管理員專用頁面
 elif choice == "📊 系統管理":
+    require_admin()  # 要求管理員權限
     st.title("📊 系統管理")
     st.success("🎉 歡迎管理員！")
     
