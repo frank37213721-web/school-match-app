@@ -132,7 +132,23 @@ if choice == "課程大廳":
                         st.write(f"**🗓️ 開課時間：** {c.get('start_time', '未設定')}")
                         st.write(f"**👥 跨校學生上限：** {c.get('max_students', 'N/A')} 人")
                     with col2:
-                        st.write(f"**🏫 合作學校上限：** {c.get('max_schools', 'N/A')} 所")
+                        # 顯示目前申請狀況
+                        current_matches = supabase.table("matches")\
+                            .select("*")\
+                            .eq("course_id", c['id'])\
+                            .in_("status", ["pending", "approved"])\
+                            .execute()
+                        
+                        approved_count = len([m for m in current_matches.data if m['status'] == 'approved'])
+                        pending_count = len([m for m in current_matches.data if m['status'] == 'pending'])
+                        total_active = approved_count + pending_count
+                        max_schools = c.get('max_schools', 2)
+                        
+                        st.write(f"**🏫 合作學校上限：** {max_schools} 所")
+                        st.write(f"**📊 目前申請：** {total_active}/{max_schools} 所")
+                        st.write(f"  - ✅ 已通過：{approved_count} 所")
+                        st.write(f"  - ⏳ 待審核：{pending_count} 所")
+                        
                         if c.get('plan_pdf_url'):
                             st.link_button("📥 查看課程規劃表 (PDF)", c['plan_pdf_url'])
                     st.write(f"**📝 課程大綱：**\n{c['syllabus']}")
@@ -142,7 +158,17 @@ if choice == "課程大廳":
                     if f"show_success_{c['id']}" not in st.session_state:
                         st.session_state[f"show_success_{c['id']}"] = False
                     
-                    if st.button(f"申請媒合", key=f"btn_{c['id']}"):
+                    # 檢查是否可以申請
+                    can_apply = True
+                    button_disabled = False
+                    button_text = "申請媒合"
+                    
+                    if total_active >= max_schools:
+                        can_apply = False
+                        button_disabled = True
+                        button_text = "🚫 名額已滿"
+                    
+                    if st.button(button_text, key=f"btn_{c['id']}", disabled=button_disabled):
                         if not st.session_state.logged_in:
                             st.warning("⚠️ 老師請先登入後再進行媒合申請喔！")
                         else:
@@ -188,48 +214,67 @@ if choice == "課程大廳":
                                         if existing_match.data:
                                             st.error("⚠️ 您已經申請過此課程的媒合，且申請正在處理中或已通過！")
                                         else:
-                                            # 2. 先寫入 matches 資料表 (確保數據一致性)
-                                            match_data = {
-                                                "course_id": c['id'],
-                                                "partner_school_id": st.session_state.school_info['id'],
-                                                "status": "pending",
-                                                "email_status": "pending"
-                                            }
-                                            match_result = supabase.table("matches").insert(match_data).execute()
-                                            match_id = match_result.data[0]['id']
+                                            # 2. 檢查課程容量是否已滿
+                                            current_matches = supabase.table("matches")\
+                                                .select("*")\
+                                                .eq("course_id", c['id'])\
+                                                .in_("status", ["pending", "approved"])\
+                                                .execute()
                                             
-                                            # 3. 準備 Email 發送給所有相關人員
-                                            applicant_school = st.session_state.school_info
-                                            host_school = c['schools']
+                                            approved_count = len([m for m in current_matches.data if m['status'] == 'approved'])
+                                            pending_count = len([m for m in current_matches.data if m['status'] == 'pending'])
+                                            total_active = approved_count + pending_count
                                             
-                                            # 收集所有需要發送 Email 的收件人
-                                            email_recipients = []
+                                            max_schools = c.get('max_schools', 2)  # 預設值 2
+                                            max_students = c.get('max_students', 20)  # 預設值 20
+                                            
+                                            # 檢查學校數量限制
+                                            if total_active >= max_schools:
+                                                st.error(f"⚠️ 此課程合作學校已滿！最多接受 {max_schools} 所學校，目前已有 {approved_count} 所通過，{pending_count} 所待審核。")
+                                            else:
+                                                # 3. 先寫入 matches 資料表 (確保數據一致性)
+                                                match_data = {
+                                                    "course_id": c['id'],
+                                                    "partner_school_id": st.session_state.school_info['id'],
+                                                    "status": "pending",
+                                                    "email_status": "pending",
+                                                    "requested_students": None  # 暫時為空，未來可擴展
+                                                }
+                                                match_result = supabase.table("matches").insert(match_data).execute()
+                                                match_id = match_result.data[0]['id']
+                                                
+                                                # 4. 準備 Email 發送給所有相關人員
+                                                applicant_school = st.session_state.school_info
+                                                host_school = c['schools']
+                                                
+                                                # 收集所有需要發送 Email 的收件人
+                                                email_recipients = []
                                             
                                             # 開課學校的收件人
-                                            email_recipients.extend([
-                                                {"email": host_school['registrant_email'], "name": host_school['registrant_name'], "type": "host"},
-                                                {"email": host_school.get('academic_director_email'), "name": "教務主任", "type": "host"},
-                                                {"email": host_school.get('principal_email'), "name": "校長", "type": "host"}
-                                            ])
-                                            
-                                            # 申請學校的收件人
-                                            email_recipients.extend([
-                                                {"email": applicant_school['registrant_email'], "name": applicant_school['registrant_name'], "type": "applicant"},
-                                                {"email": applicant_school.get('academic_director_email'), "name": "教務主任", "type": "applicant"},
-                                                {"email": applicant_school.get('principal_email'), "name": "校長", "type": "applicant"}
-                                            ])
-                                            
-                                            # 4. 發送 Email 給所有收件人
-                                            email_success = True
-                                            failed_emails = []
-                                            
-                                            for recipient in email_recipients:
-                                                if recipient['email'] and '@' in recipient['email']:
-                                                    try:
-                                                        if recipient['type'] == 'host':
-                                                            # 給開課學校：收到媒合申請通知
-                                                            subject = f"媒合申請通知：{applicant_school['name']} 申請您的課程「{c['title']}」"
-                                                            content = f"""
+                                                email_recipients.extend([
+                                                    {"email": host_school['registrant_email'], "name": host_school['registrant_name'], "type": "host"},
+                                                    {"email": host_school.get('academic_director_email'), "name": "教務主任", "type": "host"},
+                                                    {"email": host_school.get('principal_email'), "name": "校長", "type": "host"}
+                                                ])
+                                                
+                                                # 申請學校的收件人
+                                                email_recipients.extend([
+                                                    {"email": applicant_school['registrant_email'], "name": applicant_school['registrant_name'], "type": "applicant"},
+                                                    {"email": applicant_school.get('academic_director_email'), "name": "教務主任", "type": "applicant"},
+                                                    {"email": applicant_school.get('principal_email'), "name": "校長", "type": "applicant"}
+                                                ])
+                                                
+                                                # 5. 發送 Email 給所有收件人
+                                                email_success = True
+                                                failed_emails = []
+                                                
+                                                for recipient in email_recipients:
+                                                    if recipient['email'] and '@' in recipient['email']:
+                                                        try:
+                                                            if recipient['type'] == 'host':
+                                                                # 給開課學校：收到媒合申請通知
+                                                                subject = f"媒合申請通知：{applicant_school['name']} 申請您的課程「{c['title']}」"
+                                                                content = f"""
 親愛的 {recipient['name']}：
 
 您開設的課程「{c['title']}」收到來自 {applicant_school['name']} 的媒合申請。
@@ -243,11 +288,11 @@ if choice == "課程大廳":
 請登入系統查看詳細資訊並處理此申請。
 
 跨校課程媒合平台
-                                                            """
-                                                        else:
-                                                            # 給申請學校：已遞交媒合申請確認
-                                                            subject = f"媒合申請確認：已申請「{c['title']}」課程"
-                                                            content = f"""
+                                                                """
+                                                            else:
+                                                                # 給申請學校：已遞交媒合申請確認
+                                                                subject = f"媒合申請確認：已申請「{c['title']}」課程"
+                                                                content = f"""
 親愛的 {recipient['name']}：
 
 您的學校已成功遞交課程「{c['title']}」的媒合申請。
@@ -260,28 +305,28 @@ if choice == "課程大廳":
 我們將通知開課學校處理您的申請，請耐心等候回覆。
 
 跨校課程媒合平台
-                                                            """
-                                                        
-                                                        success, msg = send_email(recipient['email'], recipient['name'], subject, content)
-                                                        if not success:
+                                                                """
+                                                            
+                                                            success, msg = send_email(recipient['email'], recipient['name'], subject, content)
+                                                            if not success:
+                                                                email_success = False
+                                                                failed_emails.append(f"{recipient['name']} ({recipient['email']})")
+                                                                
+                                                        except Exception as e:
                                                             email_success = False
                                                             failed_emails.append(f"{recipient['name']} ({recipient['email']})")
-                                                            
-                                                    except Exception as e:
-                                                        email_success = False
-                                                        failed_emails.append(f"{recipient['name']} ({recipient['email']})")
-                                            
-                                            # 5. 更新 Email 狀態
-                                            if email_success:
-                                                supabase.table("matches").update({"email_status": "sent"}).eq("id", match_id).execute()
-                                                st.success("✅ 媒合申請已成功提交！所有相關人員都會收到通知 Email。")
-                                            else:
-                                                supabase.table("matches").update({"email_status": "failed"}).eq("id", match_id).execute()
-                                                st.warning(f"⚠️ 媒合申請已提交，但部分 Email 發送失敗：{', '.join(failed_emails)}")
-                                            
-                                            # 6. 清除表單狀態
-                                            st.session_state[f"show_matching_{c['id']}"] = False
-                                            st.rerun()
+                                                
+                                                # 6. 更新 Email 狀態
+                                                if email_success:
+                                                    supabase.table("matches").update({"email_status": "sent"}).eq("id", match_id).execute()
+                                                    st.success("✅ 媒合申請已成功提交！所有相關人員都會收到通知 Email。")
+                                                else:
+                                                    supabase.table("matches").update({"email_status": "failed"}).eq("id", match_id).execute()
+                                                    st.warning(f"⚠️ 媒合申請已提交，但部分 Email 發送失敗：{', '.join(failed_emails)}")
+                                                
+                                                # 7. 清除表單狀態
+                                                st.session_state[f"show_matching_{c['id']}"] = False
+                                                st.rerun()
                                             
                                     except Exception as e:
                                         st.error(f"❌ 申請失敗：{e}")
