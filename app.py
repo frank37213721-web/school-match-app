@@ -15,6 +15,31 @@ def hash_password(raw_password: str) -> str:
 def verify_password(raw_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(raw_password, hashed_password)
 
+# 連鎖刪除函數
+def delete_course_cascade(course_id):
+    """刪除課程前，先刪除所有關聯的 matches，避免 FK 報錯"""
+    supabase.table("matches").delete().eq("course_id", course_id).execute()
+    supabase.table("courses").delete().eq("id", course_id).execute()
+
+def delete_school_cascade(school_id):
+    """刪除學校前，依序刪除 matches → courses → schools，避免 FK 報錯"""
+    # 1. 找出該學校所有課程 id
+    courses_res = supabase.table("courses").select("id").eq("host_school_id", school_id).execute()
+    course_ids = [c["id"] for c in courses_res.data]
+
+    # 2. 刪除這些課程的所有 matches
+    for cid in course_ids:
+        supabase.table("matches").delete().eq("course_id", cid).execute()
+
+    # 3. 刪除該學校作為 partner 的 matches
+    supabase.table("matches").delete().eq("partner_school_id", school_id).execute()
+
+    # 4. 刪除該學校所有課程
+    supabase.table("courses").delete().eq("host_school_id", school_id).execute()
+
+    # 5. 刪除學校本身
+    supabase.table("schools").delete().eq("id", school_id).execute()
+
 # 權限控制函數
 def require_login():
     """要求用戶登入，否則顯示警告並停止執行"""
@@ -120,7 +145,10 @@ if choice == "課程大廳":
     st.header("📚 現有跨校課程一覽")
     try:
         # 讀取課程與關聯的學校資訊
-        response = supabase.table("courses").select("*, schools(name, registrant_email, registrant_name)").execute()
+        response = supabase.table("courses").select(
+            "id, title, start_time, max_students, max_schools, syllabus, plan_pdf_url, "
+            "schools(name, registrant_name, registrant_email, academic_director_email, principal_email)"
+        ).execute()
         courses = response.data
         if not courses:
             st.info("目前尚無開課資訊。")
@@ -822,7 +850,12 @@ elif choice == "配對情形":
         # 查詢我開的課有哪些人申請 (關聯查詢)
         # 邏輯：找 course_id 屬於我的 matches，並顯示申請學校名稱
         incoming = supabase.table("matches")\
-            .select("created_at, status, courses(title, host_school_id), schools(name)")\
+            .select("""
+                created_at,
+                status,
+                courses(title, host_school_id),
+                partner_school:schools!partner_school_id(name)
+            """)\
             .execute()
         
         # 這裡需要稍微過濾一下，只顯示給「我」的
@@ -830,7 +863,7 @@ elif choice == "配對情形":
         
         if my_incoming:
             for m in my_incoming:
-                st.info(f"📍 **{m['schools']['name']}** 在 {m['created_at'][:16]} 申請了您的「{m['courses']['title']}」")
+                st.info(f"📍 **{m['partner_school']['name']}** 在 {m['created_at'][:16]} 申請了您的「{m['courses']['title']}」")
         else:
             st.write("目前尚無收到申請。")
 
@@ -838,13 +871,13 @@ elif choice == "配對情形":
         st.subheader("📤 已寄出的配對請求")
         # 查詢我申請了哪些課
         outgoing = supabase.table("matches")\
-            .select("created_at, status, courses(title, schools(name))")\
+            .select("created_at, status, courses(title, host_school:schools!host_school_id(name))")\
             .eq("partner_school_id", school['id'])\
             .execute()
-            
+
         if outgoing.data:
             for m in outgoing.data:
-                st.success(f"🚀 您於 {m['created_at'][:16]} 向 **{m['courses']['schools']['name']}** 申請了「{m['courses']['title']}」")
+                st.success(f"🚀 您於 {m['created_at'][:16]} 向 **{m['courses']['host_school']['name']}** 申請了「{m['courses']['title']}」")
         else:
             st.write("您尚未申請任何課程。")
 
@@ -900,9 +933,34 @@ elif choice == "📊 系統管理":
                                 st.write(f"合作: {'✅' if account.get('is_partner') else '❌'}")
                             
                             st.divider()
+                            # 刪除學校按鈕（連鎖刪除）
+                            delete_key = f"confirm_delete_school_{account['id']}"
+                            if delete_key not in st.session_state:
+                                st.session_state[delete_key] = False
+
+                            if not st.session_state[delete_key]:
+                                if st.button(f"🗑️ 刪除「{account['name']}」及其所有資料", key=f"del_school_{account['id']}", type="secondary"):
+                                    st.session_state[delete_key] = True
+                                    st.rerun()
+                            else:
+                                st.warning(f"⚠️ 確定要刪除「{account['name']}」？此操作將同時刪除該校所有課程與媒合記錄，且**無法復原**。")
+                                col_yes, col_no = st.columns(2)
+                                with col_yes:
+                                    if st.button("✅ 確認刪除", key=f"yes_school_{account['id']}", type="primary"):
+                                        try:
+                                            delete_school_cascade(account['id'])
+                                            st.success(f"已刪除「{account['name']}」及所有關聯資料。")
+                                            st.session_state[delete_key] = False
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error(f"刪除失敗：{e}")
+                                with col_no:
+                                    if st.button("❌ 取消", key=f"no_school_{account['id']}"):
+                                        st.session_state[delete_key] = False
+                                        st.rerun()
             else:
                 st.info("目前尚無學校註冊帳號。")
-                
+
         except Exception as e:
             st.error(f"讀取學校資料失敗：{e}")
     
@@ -947,9 +1005,34 @@ elif choice == "📊 系統管理":
                                 st.write("**📋 課程大綱:**")
                                 st.write(course.get('syllabus', '未設定'))
                             
+                            # 刪除課程按鈕（連鎖刪除）
+                            delete_key = f"confirm_delete_course_{course['id']}"
+                            if delete_key not in st.session_state:
+                                st.session_state[delete_key] = False
+
+                            if not st.session_state[delete_key]:
+                                if st.button(f"🗑️ 刪除課程「{course['title']}」", key=f"del_course_{course['id']}", type="secondary"):
+                                    st.session_state[delete_key] = True
+                                    st.rerun()
+                            else:
+                                st.warning(f"⚠️ 確定要刪除「{course['title']}」？此操作將同時刪除所有媒合記錄，且**無法復原**。")
+                                col_yes, col_no = st.columns(2)
+                                with col_yes:
+                                    if st.button("✅ 確認刪除", key=f"yes_course_{course['id']}", type="primary"):
+                                        try:
+                                            delete_course_cascade(course['id'])
+                                            st.success(f"已刪除課程「{course['title']}」及所有關聯媒合記錄。")
+                                            st.session_state[delete_key] = False
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error(f"刪除失敗：{e}")
+                                with col_no:
+                                    if st.button("❌ 取消", key=f"no_course_{course['id']}"):
+                                        st.session_state[delete_key] = False
+                                        st.rerun()
                             st.divider()
             else:
                 st.info("目前尚無任何課程資訊。")
-                
+
         except Exception as e:
             st.error(f"讀取課程資料失敗：{e}")
