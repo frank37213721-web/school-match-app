@@ -532,7 +532,8 @@ elif choice == "學校帳號登入":
         registrant_extension = st.text_input("承辦人分機", placeholder="例：123", max_chars=10)
 
         # 學校電話作為帳號
-        school_phone = st.text_input("4. 學校電話 (帳號)", placeholder="例：073475181", max_chars=10)
+        school_phone = st.text_input("4. 學校電話（帳號，請含區域號碼）", placeholder="例：073475181", max_chars=10)
+        st.caption("⚠️ 請輸入含區域號碼的完整電話，例如高雄市為 07、台北市為 02")
 
         # 自動生成預設密碼（電話後4碼）
         default_password = school_phone[-4:] if len(school_phone) >= 4 else ""
