@@ -254,14 +254,14 @@ if choice == "課程大廳":
                                             # 開課學校的收件人
                                                 email_recipients.extend([
                                                     {"email": host_school['registrant_email'], "name": host_school['registrant_name'], "type": "host"},
-                                                    {"email": host_school.get('academic_director_email'), "name": "教務主任", "type": "host"},
+                                                    {"email": host_school.get('academic_director_email'), "name": "承辦處室主任", "type": "host"},
                                                     {"email": host_school.get('principal_email'), "name": "校長", "type": "host"}
                                                 ])
                                                 
                                                 # 申請學校的收件人
                                                 email_recipients.extend([
                                                     {"email": applicant_school['registrant_email'], "name": applicant_school['registrant_name'], "type": "applicant"},
-                                                    {"email": applicant_school.get('academic_director_email'), "name": "教務主任", "type": "applicant"},
+                                                    {"email": applicant_school.get('academic_director_email'), "name": "承辦處室主任", "type": "applicant"},
                                                     {"email": applicant_school.get('principal_email'), "name": "校長", "type": "applicant"}
                                                 ])
                                                 
@@ -451,12 +451,12 @@ elif choice == "學校帳號登入":
                                     content
                                 )
                                 
-                                # 同時通知教務主任和校長（如果有 Email）
+                                # 同時通知承辦處室主任和校長（如果有 Email）
                                 additional_recipients = []
                                 if school.get('academic_director_email') and '@' in school.get('academic_director_email', ''):
                                     additional_recipients.append({
                                         'email': school['academic_director_email'],
-                                        'name': '教務主任'
+                                        'name': '承辦處室主任'
                                     })
                                 if school.get('principal_email') and '@' in school.get('principal_email', ''):
                                     additional_recipients.append({
@@ -569,7 +569,7 @@ elif choice == "學校帳號登入":
         # 聯絡人 Email
         st.write("### 聯絡人資訊")
         registrant_email = st.text_input("承辦人 Email")  # 補回這個輸入框
-        academic_director_email = st.text_input("教務主任 Email")
+        academic_director_email = st.text_input("承辦處室主任 Email")
         principal_email = st.text_input("校長 Email")
 
         if st.button("確認註冊"):
@@ -715,7 +715,7 @@ elif choice == "學校基本資料":
             st.info(f"🗺️ 分區：{school.get('district', '未設定')}")
             
         with col2:
-            st.info(f"📧 教務主任 Email：{school.get('academic_director_email', '未設定')}")
+            st.info(f"📧 承辦處室主任 Email：{school.get('academic_director_email', '未設定')}")
             st.info(f"📧 校長 Email：{school.get('principal_email', '未設定')}")
         
         st.divider()
@@ -723,7 +723,7 @@ elif choice == "學校基本資料":
         
         with st.form("update_school_info"):
             st.write("#### 聯絡人資訊更新")
-            new_academic_director_email = st.text_input("教務主任 Email", value=school.get('academic_director_email', ''))
+            new_academic_director_email = st.text_input("承辦處室主任 Email", value=school.get('academic_director_email', ''))
             new_principal_email = st.text_input("校長 Email", value=school.get('principal_email', ''))
             
             st.write("#### 密碼變更")
@@ -893,7 +893,7 @@ elif choice == "📊 系統管理":
                             
                             with col2:
                                 st.write("**📧 聯絡資訊**")
-                                st.write(f"教務主任: {account.get('academic_director_email', '未設定')}")
+                                st.write(f"承辦處室主任: {account.get('academic_director_email', '未設定')}")
                                 st.write(f"校長: {account.get('principal_email', '未設定')}")
                                 st.write("**🎓 權限設定**")
                                 st.write(f"開課: {'✅' if account.get('is_host') else '❌'}")

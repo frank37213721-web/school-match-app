@@ -12,7 +12,7 @@ CREATE TABLE schools (
     registrant_name TEXT NOT NULL,         -- 承辦人姓名
     registrant_email TEXT NOT NULL,        -- 承辦人 Email (主聯絡窗口)
     registrant_extension TEXT,             -- 承辦人分機
-    academic_director_email TEXT,          -- 教務主任 Email
+    academic_director_email TEXT,          -- 承辦處室主任 Email
     principal_email TEXT,                  -- 校長 Email
     identity TEXT,                         -- 身份/職稱
     is_host BOOLEAN DEFAULT true,          -- 是否為主辦方
@@ -34,7 +34,7 @@ CREATE TABLE schools (
 ## 📧 Email 欄位使用原則
 
 - **registrant_email**: 主要聯絡窗口 (承辦人)
-- **academic_director_email**: 教務主任
+- **academic_director_email**: 承辦處室主任 Email
 - **principal_email**: 校長
 - **移除 email 欄位**: 避免與 registrant_email 混淆
 
