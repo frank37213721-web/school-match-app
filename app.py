@@ -3,6 +3,16 @@ from supabase import create_client
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from passlib.context import CryptContext
+
+# 密碼雜湊設定
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(raw_password: str) -> str:
+    return pwd_context.hash(raw_password)
+
+def verify_password(raw_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(raw_password, hashed_password)
 
 # 1. 連接 Supabase (建議將金鑰移至 secrets.toml)
 url = st.secrets["SUPABASE_URL"]
@@ -79,7 +89,7 @@ if "logged_in" not in st.session_state:
 # --- 側邊欄選單 ---
 if st.session_state.get("admin_logged_in"):
     # 管理員專用選單
-    menu = ["課程大廳", "📊 系統管理面板", "🏫 已註冊學校清單", "📈 配對申請統計", "👨‍💼 創建管理帳號", "登出"]
+    menu = ["課程大廳", "📊 系統管理", "登出"]
 elif not st.session_state.logged_in:
     menu = ["課程大廳", "學校帳號登入"]
 else:
@@ -213,12 +223,18 @@ elif choice == "學校帳號登入":
         email = st.text_input("帳號 (電話號碼)")
         pwd = st.text_input("密碼", type="password")
         if st.button("確認登入"):
-            res = supabase.table("schools").select("*").eq("phone", email).eq("password", pwd).execute()
+            # 先查詢 phone 對應的用戶
+            res = supabase.table("schools").select("*").eq("phone", email).execute()
             if res.data:
-                st.session_state.logged_in = True
-                st.session_state.school_info = res.data[0]
-                st.success(f"登入成功！歡迎 {res.data[0]['name']}。")
-                st.rerun()
+                user = res.data[0]
+                # 比對雜湊密碼
+                if verify_password(pwd, user['password']):
+                    st.session_state.logged_in = True
+                    st.session_state.school_info = user
+                    st.success(f"登入成功！歡迎 {user['name']}。")
+                    st.rerun()
+                else:
+                    st.error("帳號或密碼錯誤，請重新輸入。")
             else:
                 st.error("帳號或密碼錯誤，請重新輸入。")
     
@@ -263,6 +279,9 @@ elif choice == "學校帳號登入":
                 "高雄市立中山高級中學", "高雄市立前鎮高級中學", "高雄市立高雄女子高級中學",
                 "高雄市立路竹高級中學", "國立中山大學附屬國光高級中學", "國立屏東女子高級中學",
                 "國立潮州高級中學", "國立臺東高級中學"
+            ],
+            "其他": [
+                "新竹市數位實驗高中"
             ]
         }
         
@@ -276,26 +295,36 @@ elif choice == "學校帳號登入":
         district = selected_district
         school_name = selected_school
         
+        # 聯絡人基本資訊
+        st.write("### 3. 承辦人資訊")
+        registrant_name = st.text_input("承辦人姓名", placeholder="例：王小明")
+        registrant_extension = st.text_input("承辦人分機", placeholder="例：123", max_chars=10)
+
         # 學校電話作為帳號
-        school_phone = st.text_input("3. 學校電話 (帳號)", placeholder="例：073475181", max_chars=10)
-        
+        school_phone = st.text_input("4. 學校電話 (帳號)", placeholder="例：073475181", max_chars=10)
+
         # 自動生成預設密碼（電話後4碼）
         default_password = school_phone[-4:] if len(school_phone) >= 4 else ""
         
+        # 將預設密碼進行雜湊處理
+        hashed_password = hash_password(default_password) if default_password else ""
+
         st.info(f"📞 預設密碼：{default_password if default_password else '請輸入完整電話號碼'}")
-        
-        # 聯絡人資訊
-        st.write("### 4. 聯絡人資訊")
-        handler_email = st.text_input("承辦人 Email")
+
+        # 聯絡人 Email
+        st.write("### 聯絡人資訊")
+        registrant_email = st.text_input("承辦人 Email")  # 補回這個輸入框
         academic_director_email = st.text_input("教務主任 Email")
         principal_email = st.text_input("校長 Email")
 
         if st.button("確認註冊"):
-            if not school_phone or len(school_phone) < 4:
+            if not registrant_name:
+                st.error("請填寫承辦人姓名")
+            elif not school_phone or len(school_phone) < 4:
                 st.error("請輸入完整的學校電話號碼（至少4碼）")
-            elif not handler_email or not academic_director_email or not principal_email:
+            elif not registrant_email or not academic_director_email or not principal_email:
                 st.error("請填寫所有聯絡人 Email")
-            elif "@" not in handler_email or "@" not in academic_director_email or "@" not in principal_email:
+            elif "@" not in registrant_email or "@" not in academic_director_email or "@" not in principal_email:
                 st.error("請輸入正確的 Email 格式")
             else:
                 # 檢查該學校是否已有帳號
@@ -303,7 +332,7 @@ elif choice == "學校帳號登入":
                     .select("*")\
                     .eq("name", school_name)\
                     .execute()
-                
+
                 if existing_school.data:
                     st.error(f"⚠️ 此學校「{school_name}」已經註冊過帳號了，每校限一個帳號。")
                 else:
@@ -312,7 +341,7 @@ elif choice == "學校帳號登入":
                         .select("*")\
                         .eq("phone", school_phone)\
                         .execute()
-                    
+
                     if existing_phone.data:
                         st.error("⚠️ 此電話號碼已被其他學校使用，請聯繫管理員。")
                     else:
@@ -320,8 +349,11 @@ elif choice == "學校帳號登入":
                             "name": school_name,
                             "district": district,
                             "phone": school_phone,
-                            "password": default_password,
-                            "handler_email": handler_email,  # 這裡的 Key 必須跟資料庫欄位名稱一模一樣
+                            "password": hashed_password,  # 儲存雜湊後的密碼
+                            "registrant_name": registrant_name,
+                            "registrant_extension": registrant_extension,
+                            "registrant_email": registrant_email,  # 補回這一行
+                            "email": registrant_email,             # 補上這一行，對應資料庫舊有的 email 欄位
                             "academic_director_email": academic_director_email,
                             "principal_email": principal_email,
                             "is_host": True,
@@ -342,12 +374,20 @@ elif choice == "學校帳號登入":
         admin_password = st.text_input("管理員密碼", type="password")
         
         if st.button("管理員登入"):
-            if admin_username == "match" and admin_password == "match":
-                st.session_state.admin_logged_in = True
-                st.success("🎉 管理員登入成功！")
-                st.rerun()
-            else:
-                st.error("❌ 管理員帳號或密碼錯誤！")
+            try:
+                # 從 st.secrets 獲取管理員憑證
+                admin_user = st.secrets["ADMIN_USER"]
+                admin_password_hash = st.secrets["ADMIN_PASSWORD_HASH"]
+                
+                if admin_username == admin_user and verify_password(admin_password, admin_password_hash):
+                    st.session_state.admin_logged_in = True
+                    st.success("🎉 管理員登入成功！")
+                    st.rerun()
+                else:
+                    st.error("❌ 管理員帳號或密碼錯誤！")
+            except Exception as e:
+                st.error(f"❌ 登入失敗：{e}")
+                st.info("⚠️ 請確認 st.secrets 中已設定 ADMIN_USER 和 ADMIN_PASSWORD_HASH")
         
         # 如果管理員已登入，顯示創建管理帳號功能
         if st.session_state.get("admin_logged_in"):
@@ -362,11 +402,14 @@ elif choice == "學校帳號登入":
             if st.button("創建管理帳號"):
                 if admin_name and admin_email and admin_password:
                     try:
+                        # 雜湊管理員密碼
+                        hashed_admin_password = hash_password(admin_password)
+                        
                         admin_data = {
                             "name": "管理部門",
                             "registrant_name": admin_name,
                             "email": admin_email,
-                            "password": admin_password,
+                            "password": hashed_admin_password,
                             "identity": admin_role,
                             "is_host": True,
                             "is_partner": True,
@@ -414,7 +457,6 @@ elif choice == "學校基本資料":
             st.info(f"🗺️ 分區：{school.get('district', '未設定')}")
             
         with col2:
-            st.info(f"📧 承辦人 Email：{school.get('registrant_email', '未設定')}")
             st.info(f"📧 教務主任 Email：{school.get('academic_director_email', '未設定')}")
             st.info(f"📧 校長 Email：{school.get('principal_email', '未設定')}")
         
@@ -423,7 +465,6 @@ elif choice == "學校基本資料":
         
         with st.form("update_school_info"):
             st.write("#### 聯絡人資訊更新")
-            new_registrant_email = st.text_input("承辦人 Email", value=school.get('registrant_email', ''))
             new_academic_director_email = st.text_input("教務主任 Email", value=school.get('academic_director_email', ''))
             new_principal_email = st.text_input("校長 Email", value=school.get('principal_email', ''))
             
@@ -435,11 +476,10 @@ elif choice == "學校基本資料":
             col1, col2 = st.columns(2)
             with col1:
                 if st.form_submit_button("更新聯絡資訊"):
-                    if new_registrant_email and new_academic_director_email and new_principal_email:
-                        if "@" in new_registrant_email and "@" in new_academic_director_email and "@" in new_principal_email:
+                    if new_academic_director_email and new_principal_email:
+                        if "@" in new_academic_director_email and "@" in new_principal_email:
                             try:
                                 update_data = {
-                                    "registrant_email": new_registrant_email,
                                     "academic_director_email": new_academic_director_email,
                                     "principal_email": new_principal_email
                                 }
@@ -458,13 +498,16 @@ elif choice == "學校基本資料":
             with col2:
                 if st.form_submit_button("更新密碼"):
                     if current_password and new_password and confirm_new_password:
-                        if current_password == school['password']:
+                        # 驗證目前密碼
+                        if verify_password(current_password, school['password']):
                             if new_password == confirm_new_password:
                                 if len(new_password) >= 4:
                                     try:
-                                        supabase.table("schools").update({"password": new_password}).eq("id", school['id']).execute()
+                                        # 將新密碼雜湊後儲存
+                                        hashed_new_password = hash_password(new_password)
+                                        supabase.table("schools").update({"password": hashed_new_password}).eq("id", school['id']).execute()
                                         st.success("✅ 密碼更新成功！")
-                                        st.session_state.school_info['password'] = new_password
+                                        st.session_state.school_info['password'] = hashed_new_password
                                     except Exception as e:
                                         st.error(f"密碼更新失敗：{e}")
                                 else:
@@ -546,127 +589,106 @@ elif choice == "配對情形":
             st.write("您尚未申請任何課程。")
 
 # 管理員專用頁面
-elif choice == "📊 系統管理面板":
-    st.title("📊 系統管理面板")
+elif choice == "📊 系統管理":
+    st.title("📊 系統管理")
     st.success("🎉 歡迎管理員！")
     
-    # 系統統計
-    col1, col2, col3 = st.columns(3)
+    # 建立兩個頁籤
+    tab1, tab2 = st.tabs(["🏫 學校資訊", "📚 課程資訊"])
     
-    with col1:
-        # 統計已註冊學校數量
-        schools = supabase.table("schools").select("*").execute()
-        unique_schools = set([s['name'] for s in schools.data if not s.get('is_admin', False)])
-        st.metric("🏫 已註冊學校", len(unique_schools))
-    
-    with col2:
-        # 統計總帳號數量
-        total_accounts = len([s for s in schools.data if not s.get('is_admin', False)])
-        st.metric("👥 總帳號數", total_accounts)
-    
-    with col3:
-        # 統計配對申請數量
-        matches = supabase.table("matches").select("*").execute()
-        st.metric("📋 配對申請", len(matches.data))
-
-elif choice == "🏫 已註冊學校清單":
-    st.title("🏫 已註冊學校清單")
-    
-    # 獲取所有非管理員帳號
-    schools = supabase.table("schools").select("*").execute()
-    non_admin_accounts = [s for s in schools.data if not s.get('is_admin', False)]
-    
-    if non_admin_accounts:
-        # 按學校分組
-        school_groups = {}
-        for account in non_admin_accounts:
-            school_name = account['name']
-            if school_name not in school_groups:
-                school_groups[school_name] = []
-            school_groups[school_name].append(account)
+    with tab1:
+        st.subheader("🏫 已註冊學校資訊")
         
-        for school_name, accounts in school_groups.items():
-            with st.expander(f"🏫 {school_name} ({len(accounts)} 個帳號)"):
-                for account in accounts:
-                    st.write(f"👤 **{account['registrant_name']}** - {account['identity']}")
-                    st.write(f"📧 {account['email']}")
-                    st.write(f"🎓 開課: {'✅' if account['is_host'] else '❌'} | 合作: {'✅' if account['is_partner'] else '❌'}")
-                    st.divider()
-    else:
-        st.info("目前尚無學校註冊帳號。")
-
-elif choice == "📈 配對申請統計":
-    st.title("📈 配對申請統計")
-    
-    # 獲取所有配對申請
-    matches = supabase.table("matches")\
-        .select("*, courses(title), schools(name)")\
-        .execute()
-    
-    if matches.data:
-        # 按狀態統計
-        status_counts = {}
-        school_applications = {}
-        
-        for match in matches.data:
-            # 狀態統計
-            status = match.get('status', 'pending')
-            status_counts[status] = status_counts.get(status, 0) + 1
+        # 獲取所有非管理員帳號
+        try:
+            schools = supabase.table("schools").select("*").execute()
+            non_admin_accounts = [s for s in schools.data if not s.get('is_admin', False)]
             
-            # 學校申請統計
-            applicant_school = match.get('partner_school_id')
-            if applicant_school:
-                school_applications[applicant_school] = school_applications.get(applicant_school, 0) + 1
-        
-        # 顯示統計圖表
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("📊 申請狀態分布")
-            for status, count in status_counts.items():
-                st.write(f"🔸 {status}: {count} 件")
-        
-        with col2:
-            st.subheader("🏫 申請最活躍學校")
-            sorted_schools = sorted(school_applications.items(), key=lambda x: x[1], reverse=True)
-            for school_id, count in sorted_schools[:5]:
-                st.write(f"🔸 學校ID {school_id}: {count} 件申請")
-        
-        # 詳細申請列表
-        st.subheader("📋 詳細申請列表")
-        for match in matches.data:
-            course_title = match.get('courses', {}).get('title', '未知課程')
-            status = match.get('status', 'pending')
-            created_at = match.get('created_at', '')[:16]
-            st.info(f"📅 {created_at} - {course_title} - 狀態: {status}")
-    else:
-        st.info("目前尚無配對申請記錄。")
-
-elif choice == "👨‍💼 創建管理帳號":
-    st.title("👨‍💼 創建管理帳號")
+            if non_admin_accounts:
+                # 按分區分組顯示
+                districts = {}
+                for account in non_admin_accounts:
+                    district = account.get('district', '未分區')
+                    if district not in districts:
+                        districts[district] = []
+                    districts[district].append(account)
+                
+                for district, accounts in districts.items():
+                    st.write(f"### 🗺️ {district}")
+                    
+                    for account in accounts:
+                        with st.expander(f"🏫 {account['name']} - {account['registrant_name']}"):
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                st.write("**🔐 登入資訊**")
+                                st.code(f"帳號: {account['phone']}")
+                                st.code(f"密碼: {account['password']}")
+                                st.write("**📋 基本資料**")
+                                st.write(f"📞 電話: {account['phone']}")
+                                st.write(f"� 分機: {account.get('registrant_extension', '未設定')}")
+                                st.write(f"�🗺️ 分區: {account.get('district', '未設定')}")
+                                st.write(f"👤 承辦人: {account.get('registrant_name', '未設定')}")
+                            
+                            with col2:
+                                st.write("**📧 聯絡資訊**")
+                                st.write(f"教務主任: {account.get('academic_director_email', '未設定')}")
+                                st.write(f"校長: {account.get('principal_email', '未設定')}")
+                                st.write("**🎓 權限設定**")
+                                st.write(f"開課: {'✅' if account.get('is_host') else '❌'}")
+                                st.write(f"合作: {'✅' if account.get('is_partner') else '❌'}")
+                            
+                            st.divider()
+            else:
+                st.info("目前尚無學校註冊帳號。")
+                
+        except Exception as e:
+            st.error(f"讀取學校資料失敗：{e}")
     
-    admin_name = st.text_input("管理員姓名", key="admin_create_name")
-    admin_email = st.text_input("管理員 Email", key="admin_create_email")
-    admin_password = st.text_input("管理員密碼", type="password", key="admin_create_password")
-    admin_role = st.selectbox("管理員角色", ["系統管理員", "課程管理員", "審核管理員"], key="admin_create_role")
-    
-    if st.button("創建管理帳號"):
-        if admin_name and admin_email and admin_password:
-            try:
-                admin_data = {
-                    "name": "管理部門",
-                    "registrant_name": admin_name,
-                    "email": admin_email,
-                    "password": admin_password,
-                    "identity": admin_role,
-                    "is_host": True,
-                    "is_partner": True,
-                    "is_admin": True
-                }
-                supabase.table("schools").insert(admin_data).execute()
-                st.success(f"✅ 管理帳號創建成功！{admin_name} ({admin_role})")
-                st.balloons()
-            except Exception as e:
-                st.error(f"創建失敗：{e}")
-        else:
-            st.error("請填寫完整的管理員資訊！")
+    with tab2:
+        st.subheader("� 各校課程資訊")
+        
+        try:
+            # 獲取所有課程與學校資訊
+            courses = supabase.table("courses")\
+                .select("*, schools(name, district)")\
+                .execute()
+            
+            if courses.data:
+                # 按學校分組顯示課程
+                schools_courses = {}
+                for course in courses.data:
+                    school_name = course['schools']['name']
+                    if school_name not in schools_courses:
+                        schools_courses[school_name] = {
+                            'district': course['schools'].get('district', '未分區'),
+                            'courses': []
+                        }
+                    schools_courses[school_name]['courses'].append(course)
+                
+                for school_name, school_data in schools_courses.items():
+                    st.write(f"### 🏫 {school_name} ({school_data['district']})")
+                    
+                    for course in school_data['courses']:
+                        with st.expander(f"📖 {course['title']}"):
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                st.write("**⏰ 開課資訊**")
+                                st.write(f"🕐 時間: {course.get('start_time', '未設定')}")
+                                st.write(f"� 學生上限: {course.get('max_students', 'N/A')} 人")
+                                st.write(f"🏫 合作學校上限: {course.get('max_schools', 'N/A')} 所")
+                            
+                            with col2:
+                                st.write("**📝 課程內容**")
+                                if course.get('plan_pdf_url'):
+                                    st.link_button("📥 課程規劃表", course['plan_pdf_url'])
+                                st.write("**📋 課程大綱:**")
+                                st.write(course.get('syllabus', '未設定'))
+                            
+                            st.divider()
+            else:
+                st.info("目前尚無任何課程資訊。")
+                
+        except Exception as e:
+            st.error(f"讀取課程資料失敗：{e}")
