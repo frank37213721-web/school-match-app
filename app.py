@@ -335,11 +335,10 @@ elif choice == "學校帳號登入":
 
     if auth_mode == "學校帳號登入":
         st.subheader("🔑 學校帳號登入")
-        email = st.text_input("帳號 (電話號碼)")
+        phone = st.text_input("帳號（學校電話）")
         pwd = st.text_input("密碼", type="password")
         if st.button("確認登入"):
-            # 先查詢 phone 對應的用戶
-            res = supabase.table("schools").select("*").eq("phone", email).execute()
+            res = supabase.table("schools").select("*").eq("phone", phone).execute()
             if res.data:
                 user = res.data[0]
                 if verify_password(pwd, user['password_hash']):  # 使用統一的欄位名稱
