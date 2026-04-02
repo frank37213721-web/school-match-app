@@ -1,8 +1,13 @@
+import re
 import streamlit as st
 from supabase import create_client
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+
+def is_valid_email(email):
+    pattern = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+    return bool(email) and re.match(pattern, email) is not None
 from passlib.context import CryptContext
 from datetime import datetime
 
@@ -298,7 +303,7 @@ if choice == "課程大廳":
                                             email_success = True
                                             failed_emails = []
                                             for recipient in email_recipients:
-                                                if recipient['email'] and '@' in recipient['email']:
+                                                if is_valid_email(recipient['email']):
                                                     try:
                                                         if recipient['type'] == 'host':
                                                             subject = f"媒合申請通知：{applicant_school['name']} 申請您的課程「{c['title']}」"
@@ -425,12 +430,12 @@ elif choice == "學校帳號登入":
                                 
                                 # 同時通知承辦處室主任和校長（如果有 Email）
                                 additional_recipients = []
-                                if school.get('academic_director_email') and '@' in school.get('academic_director_email', ''):
+                                if is_valid_email(school.get('academic_director_email', '')):
                                     additional_recipients.append({
                                         'email': school['academic_director_email'],
                                         'name': '承辦處室主任'
                                     })
-                                if school.get('principal_email') and '@' in school.get('principal_email', ''):
+                                if is_valid_email(school.get('principal_email', '')):
                                     additional_recipients.append({
                                         'email': school['principal_email'],
                                         'name': '校長'
@@ -551,7 +556,7 @@ elif choice == "學校帳號登入":
                 st.error("請輸入完整的學校電話號碼（至少4碼）")
             elif not registrant_email or not academic_director_email or not principal_email:
                 st.error("請填寫所有聯絡人 Email")
-            elif "@" not in registrant_email or "@" not in academic_director_email or "@" not in principal_email:
+            elif not is_valid_email(registrant_email) or not is_valid_email(academic_director_email) or not is_valid_email(principal_email):
                 st.error("請輸入正確的 Email 格式")
             else:
                 # 檢查該學校是否已有帳號
@@ -707,7 +712,7 @@ elif choice == "學校基本資料":
             with col1:
                 if st.form_submit_button("更新聯絡資訊"):
                     if new_academic_director_email and new_principal_email:
-                        if "@" in new_academic_director_email and "@" in new_principal_email:
+                        if is_valid_email(new_academic_director_email) and is_valid_email(new_principal_email):
                             try:
                                 update_data = {
                                     "academic_director_email": new_academic_director_email,
@@ -847,7 +852,7 @@ elif choice == "配對情形":
                                                 (partner_info.get('academic_director_email'), '承辦處室主任'),
                                                 (partner_info.get('principal_email'), '校長'),
                                             ]:
-                                                if recipient_email and '@' in recipient_email:
+                                                if is_valid_email(recipient_email):
                                                     send_email(
                                                         recipient_email, recipient_name,
                                                         f"媒合成功通知：您的課程申請「{course_title}」已被核准",
@@ -864,7 +869,7 @@ elif choice == "配對情形":
                                             (partner_info.get('academic_director_email'), '承辦處室主任'),
                                             (partner_info.get('principal_email'), '校長'),
                                         ]:
-                                            if recipient_email and '@' in recipient_email:
+                                            if is_valid_email(recipient_email):
                                                 send_email(
                                                     recipient_email, recipient_name,
                                                     f"媒合申請通知：「{course_title}」申請未獲通過",
