@@ -4,6 +4,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from passlib.context import CryptContext
+from datetime import datetime
 
 # 密碼雜湊設定
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -373,6 +374,124 @@ elif choice == "學校帳號登入":
                     st.error("密碼錯誤！")
             else:
                 st.error("找不到此帳號！")
+        
+        # 忘記密碼功能
+        st.divider()
+        st.subheader("🔐 忘記密碼")
+        st.write("如果您忘記密碼，可以透過以下方式重置為預設密碼")
+        
+        with st.expander("📋 重置密碼說明"):
+            st.info("""
+            **重置密碼流程：**
+            1. 輸入學校帳號（電話號碼）
+            2. 輸入承辦人姓名進行身分驗證
+            3. 輸入承辦人 Email 進行驗證
+            4. 驗證成功後，密碼將重置為預設密碼（電話號碼後4碼）
+            5. 重置密碼會 Email 通知相關人員
+            """)
+        
+        # 忘記密碼表單
+        forgot_phone = st.text_input("學校帳號 (電話號碼)", key="forgot_phone")
+        forgot_name = st.text_input("承辦人姓名", key="forgot_name")
+        forgot_email = st.text_input("承辦人 Email", key="forgot_email")
+        
+        if st.button("🔄 重置密碼", key="reset_password"):
+            if forgot_phone and forgot_name and forgot_email:
+                with st.spinner("🔍 正在驗證身分資訊..."):
+                    try:
+                        # 查詢學校資料
+                        school_res = supabase.table("schools").select("*").eq("phone", forgot_phone).execute()
+                        
+                        if not school_res.data:
+                            st.error("❌ 找不到此帳號！請確認電話號碼正確。")
+                        else:
+                            school = school_res.data[0]
+                            
+                            # 驗證承辦人姓名
+                            if school['registrant_name'] != forgot_name:
+                                st.error("❌ 承辦人姓名不符！請確認輸入正確。")
+                            # 驗證承辦人 Email
+                            elif school['registrant_email'] != forgot_email:
+                                st.error("❌ 承辦人 Email 不符！請確認輸入正確。")
+                            else:
+                                # 驗�通過，重置密碼
+                                default_password = forgot_phone[-4:] if len(forgot_phone) >= 4 else "0000"
+                                hashed_password = hash_password(default_password)
+                                
+                                # 更新密碼
+                                supabase.table("schools").update({"password_hash": hashed_password}).eq("id", school['id']).execute()
+                                
+                                # 發送通知 Email
+                                subject = "🔐 密碼重置通知 - 跨校課程媒合平台"
+                                content = f"""
+親愛的 {school['registrant_name']}：
+
+您的密碼已成功重置。
+
+重置資訊：
+- 學校：{school['name']}
+- 帳號：{school['phone']}
+- 新密碼：{default_password}
+
+**重要提醒：**
+- 請使用新密碼登入系統
+- 建議登入後立即修改密碼
+- 如有問題請聯繫系統管理員
+
+登入網址：[您的應用程式網址]
+
+跨校課程媒合平台
+                                """
+                                
+                                # 發送給承辦人
+                                email_success, email_msg = send_email(
+                                    school['registrant_email'], 
+                                    school['registrant_name'], 
+                                    subject, 
+                                    content
+                                )
+                                
+                                # 同時通知教務主任和校長（如果有 Email）
+                                additional_recipients = []
+                                if school.get('academic_director_email') and '@' in school.get('academic_director_email', ''):
+                                    additional_recipients.append({
+                                        'email': school['academic_director_email'],
+                                        'name': '教務主任'
+                                    })
+                                if school.get('principal_email') and '@' in school.get('principal_email', ''):
+                                    additional_recipients.append({
+                                        'email': school['principal_email'],
+                                        'name': '校長'
+                                    })
+                                
+                                for recipient in additional_recipients:
+                                    admin_content = f"""
+親愛的 {recipient['name']}：
+
+通知：{school['name']} 的承辦人 {school['registrant_name']} 已重置密碼。
+
+重置時間：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+如非授權操作，請立即聯繫系統管理員。
+
+跨校課程媒合平台
+                                    """
+                                    send_email(recipient['email'], recipient['name'], subject, admin_content)
+                                
+                                if email_success:
+                                    st.success(f"✅ 密碼重置成功！")
+                                    st.info(f"🔑 新密碼：{default_password}")
+                                    st.info("📧 已發送通知 Email 給相關人員")
+                                    st.balloons()
+                                else:
+                                    st.success(f"✅ 密碼重置成功！")
+                                    st.info(f"🔑 新密碼：{default_password}")
+                                    st.warning("⚠️ Email 發送失敗，請記錄新密碼")
+                                
+                    except Exception as e:
+                        st.error(f"❌ 重置失敗：{e}")
+            else:
+                st.error("⚠️ 請填寫所有必填欄位！")
     
     elif auth_mode == "註冊學校帳號":
         # --- 註冊功能 (全新邏輯) ---
