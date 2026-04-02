@@ -847,71 +847,77 @@ elif choice == "配對情形":
     
     with tab1:
         st.subheader("📩 收到其他學校的配對請求")
-        # Step 1: 取得我開的所有課程
-        my_courses_res = supabase.table("courses")\
-            .select("id, title")\
-            .eq("host_school_id", school['id'])\
-            .execute()
-        my_course_ids = [c['id'] for c in my_courses_res.data]
-        my_course_map = {c['id']: c['title'] for c in my_courses_res.data}
-
-        if my_course_ids:
-            # Step 2: 查詢這些課程收到的申請
-            incoming = supabase.table("matches")\
-                .select("created_at, status, course_id, partner_school_id")\
-                .in_("course_id", my_course_ids)\
+        try:
+            # Step 1: 取得我開的所有課程
+            my_courses_res = supabase.table("courses")\
+                .select("id, title")\
+                .eq("host_school_id", school['id'])\
                 .execute()
+            my_course_ids = [c['id'] for c in my_courses_res.data]
+            my_course_map = {c['id']: c['title'] for c in my_courses_res.data}
 
-            # Step 3: 批次取得申請學校名稱
-            partner_ids = list({m['partner_school_id'] for m in incoming.data})
-            partner_map = {}
-            if partner_ids:
-                schools_res = supabase.table("schools")\
-                    .select("id, name")\
-                    .in_("id", partner_ids)\
+            if my_course_ids:
+                # Step 2: 查詢這些課程收到的申請
+                incoming = supabase.table("matches")\
+                    .select("created_at, status, course_id, partner_school_id")\
+                    .in_("course_id", my_course_ids)\
                     .execute()
-                partner_map = {s['id']: s['name'] for s in schools_res.data}
 
-            if incoming.data:
-                for m in incoming.data:
-                    course_title = my_course_map.get(m['course_id'], '未知課程')
-                    partner_name = partner_map.get(m['partner_school_id'], '未知學校')
-                    st.info(f"📍 **{partner_name}** 在 {m['created_at'][:16]} 申請了您的「{course_title}」（狀態：{m['status']}）")
+                # Step 3: 批次取得申請學校名稱
+                partner_ids = list({m['partner_school_id'] for m in incoming.data})
+                partner_map = {}
+                if partner_ids:
+                    schools_res = supabase.table("schools")\
+                        .select("id, name")\
+                        .in_("id", partner_ids)\
+                        .execute()
+                    partner_map = {s['id']: s['name'] for s in schools_res.data}
+
+                if incoming.data:
+                    for m in incoming.data:
+                        course_title = my_course_map.get(m['course_id'], '未知課程')
+                        partner_name = partner_map.get(m['partner_school_id'], '未知學校')
+                        st.info(f"📍 **{partner_name}** 在 {m['created_at'][:16]} 申請了您的「{course_title}」（狀態：{m['status']}）")
+                else:
+                    st.write("目前尚無收到申請。")
             else:
                 st.write("目前尚無收到申請。")
-        else:
-            st.write("目前尚無收到申請。")
+        except Exception as e:
+            st.error(f"讀取失敗（Tab1）：{e}")
 
     with tab2:
         st.subheader("📤 已寄出的配對請求")
-        # Step 1: 查詢我申請的 matches（含 course_id）
-        outgoing = supabase.table("matches")\
-            .select("created_at, status, course_id")\
-            .eq("partner_school_id", school['id'])\
-            .execute()
-
-        if outgoing.data:
-            # Step 2: 批次取得課程與開課學校名稱
-            course_ids = list({m['course_id'] for m in outgoing.data})
-            courses_res = supabase.table("courses")\
-                .select("id, title, host_school_id")\
-                .in_("id", course_ids)\
+        try:
+            # Step 1: 查詢我申請的 matches（含 course_id）
+            outgoing = supabase.table("matches")\
+                .select("created_at, status, course_id")\
+                .eq("partner_school_id", school['id'])\
                 .execute()
-            course_map = {c['id']: c for c in courses_res.data}
 
-            host_ids = list({c['host_school_id'] for c in courses_res.data})
-            host_res = supabase.table("schools")\
-                .select("id, name")\
-                .in_("id", host_ids)\
-                .execute()
-            host_map = {s['id']: s['name'] for s in host_res.data}
+            if outgoing.data:
+                # Step 2: 批次取得課程與開課學校名稱
+                course_ids = list({m['course_id'] for m in outgoing.data})
+                courses_res = supabase.table("courses")\
+                    .select("id, title, host_school_id")\
+                    .in_("id", course_ids)\
+                    .execute()
+                course_map = {c['id']: c for c in courses_res.data}
 
-            for m in outgoing.data:
-                course = course_map.get(m['course_id'], {})
-                host_name = host_map.get(course.get('host_school_id'), '未知學校')
-                st.success(f"🚀 您於 {m['created_at'][:16]} 向 **{host_name}** 申請了「{course.get('title', '未知課程')}」（狀態：{m['status']}）")
-        else:
-            st.write("您尚未申請任何課程。")
+                host_ids = list({c['host_school_id'] for c in courses_res.data})
+                host_res = supabase.table("schools")\
+                    .select("id, name")\
+                    .in_("id", host_ids)\
+                    .execute()
+                host_map = {s['id']: s['name'] for s in host_res.data}
+
+                for m in outgoing.data:
+                    course = course_map.get(m['course_id'], {})
+                    host_name = host_map.get(course.get('host_school_id'), '未知學校')
+                    st.success(f"🚀 您於 {m['created_at'][:16]} 向 **{host_name}** 申請了「{course.get('title', '未知課程')}」（狀態：{m['status']}）")
+            else:
+                st.write("您尚未申請任何課程。")
+        except Exception as e:
+            st.error(f"讀取失敗（Tab2）：{e}")
 
 # 管理員專用頁面
 elif choice == "📊 系統管理":
