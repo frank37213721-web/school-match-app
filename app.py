@@ -131,7 +131,7 @@ if choice == "課程大廳":
     st.header("📚 現有跨校課程一覽")
     try:
         # 讀取課程與關聯的學校資訊
-        response = supabase.table("courses").select("*, schools(name, email, registrant_name)").execute()
+        response = supabase.table("courses").select("*, schools(name, registrant_email, registrant_name)").execute()
         courses = response.data
         if not courses:
             st.info("目前尚無開課資訊。")
@@ -188,7 +188,7 @@ if choice == "課程大廳":
                         with col2:
                             if st.button("確定發送媒合Email", key=f"send_{c['id']}", disabled=not all_confirmed):
                                 # 取得資訊
-                                host_email = c['schools']['email']
+                                host_email = c['schools']['registrant_email']  # 使用統一的欄位名稱
                                 host_name = c['schools']['registrant_name']
                                 applicant_school = st.session_state.school_info['name']
                                 
@@ -248,16 +248,15 @@ elif choice == "學校帳號登入":
             res = supabase.table("schools").select("*").eq("phone", email).execute()
             if res.data:
                 user = res.data[0]
-                # 比對雜湊密碼
-                if verify_password(pwd, user['password']):
+                if verify_password(pwd, user['password_hash']):  # 使用統一的欄位名稱
                     st.session_state.logged_in = True
                     st.session_state.school_info = user
-                    st.success(f"登入成功！歡迎 {user['name']}。")
+                    st.success(f"登入成功！歡迎 {user['name']}")
                     st.rerun()
                 else:
-                    st.error("帳號或密碼錯誤，請重新輸入。")
+                    st.error("密碼錯誤！")
             else:
-                st.error("帳號或密碼錯誤，請重新輸入。")
+                st.error("找不到此帳號！")
     
     elif auth_mode == "註冊學校帳號":
         # --- 註冊功能 (全新邏輯) ---
@@ -370,15 +369,16 @@ elif choice == "學校帳號登入":
                             "name": school_name,
                             "district": district,
                             "phone": school_phone,
-                            "password": hashed_password,  # 儲存雜湊後的密碼
+                            "password_hash": hashed_password,  # 使用統一的欄位名稱
                             "registrant_name": registrant_name,
                             "registrant_extension": registrant_extension,
-                            "registrant_email": registrant_email,  # 補回這一行
-                            "email": registrant_email,             # 補上這一行，對應資料庫舊有的 email 欄位
+                            "registrant_email": registrant_email,  # 統一使用承辦人 Email
                             "academic_director_email": academic_director_email,
                             "principal_email": principal_email,
+                            "identity": "學校承辦人",  # 新增身份欄位
                             "is_host": True,
-                            "is_partner": True
+                            "is_partner": True,
+                            "is_admin": False
                         }
                         try:
                             data = supabase.table("schools").insert(new_school).execute()
@@ -429,8 +429,8 @@ elif choice == "學校帳號登入":
                         admin_data = {
                             "name": "管理部門",
                             "registrant_name": admin_name,
-                            "email": admin_email,
-                            "password": hashed_admin_password,
+                            "registrant_email": admin_email,  # 使用統一的欄位名稱
+                            "password_hash": hashed_admin_password,  # 使用統一的欄位名稱
                             "identity": admin_role,
                             "is_host": True,
                             "is_partner": True,
@@ -522,15 +522,15 @@ elif choice == "學校基本資料":
                 if st.form_submit_button("更新密碼"):
                     if current_password and new_password and confirm_new_password:
                         # 驗證目前密碼
-                        if verify_password(current_password, school['password']):
+                        if verify_password(current_password, school['password_hash']):  # 使用統一的欄位名稱
                             if new_password == confirm_new_password:
                                 if len(new_password) >= 4:
                                     try:
                                         # 將新密碼雜湊後儲存
                                         hashed_new_password = hash_password(new_password)
-                                        supabase.table("schools").update({"password": hashed_new_password}).eq("id", school['id']).execute()
+                                        supabase.table("schools").update({"password_hash": hashed_new_password}).eq("id", school['id']).execute()  # 使用統一的欄位名稱
                                         st.success("✅ 密碼更新成功！")
-                                        st.session_state.school_info['password'] = hashed_new_password
+                                        st.session_state.school_info['password_hash'] = hashed_new_password  # 更新 session_state
                                     except Exception as e:
                                         st.error(f"密碼更新失敗：{e}")
                                 else:
@@ -649,7 +649,7 @@ elif choice == "📊 系統管理":
                             with col1:
                                 st.write("**🔐 登入資訊**")
                                 st.code(f"帳號: {account['phone']}")
-                                st.code(f"密碼: {account['password']}")
+                                st.code("密碼: [已雜湊加密]")  # 不顯示實際雜湊值，更安全
                                 st.write("**📋 基本資料**")
                                 st.write(f"📞 電話: {account['phone']}")
                                 st.write(f"� 分機: {account.get('registrant_extension', '未設定')}")
