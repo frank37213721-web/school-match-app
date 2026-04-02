@@ -846,11 +846,11 @@ elif choice == "配對情形":
         try:
             # Step 1: 取得我開的所有課程
             my_courses_res = supabase.table("courses")\
-                .select("id, title")\
+                .select("id, title, max_schools")\
                 .eq("host_school_id", school['id'])\
                 .execute()
             my_course_ids = [c['id'] for c in my_courses_res.data]
-            my_course_map = {c['id']: c['title'] for c in my_courses_res.data}
+            my_course_map = {c['id']: c for c in my_courses_res.data}
 
             if my_course_ids:
                 # Step 2: 查詢這些課程收到的申請
@@ -871,9 +871,35 @@ elif choice == "配對情形":
 
                 if incoming.data:
                     for m in incoming.data:
-                        course_title = my_course_map.get(m['course_id'], '未知課程')
+                        course = my_course_map.get(m['course_id'], {})
+                        course_title = course.get('title', '未知課程')
+                        max_schools = course.get('max_schools', 2)
                         partner_name = partner_map.get(m['partner_school_id'], '未知學校')
-                        st.info(f"📍 **{partner_name}** 申請了您的「{course_title}」（狀態：{m['status']}）")
+                        status = m['status']
+
+                        status_label = {"pending": "⏳ 待審核", "approved": "✅ 媒合成功", "rejected": "❌ 已拒絕"}.get(status, status)
+
+                        with st.container(border=True):
+                            st.write(f"**{partner_name}** 申請了「{course_title}」　{status_label}")
+
+                            if status == "pending":
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    if st.button("✅ 確認正式合作", key=f"approve_{m['id']}"):
+                                        # 確認核准數量未超過上限
+                                        approved_count = len([x for x in incoming.data
+                                                              if x['course_id'] == m['course_id'] and x['status'] == 'approved'])
+                                        if approved_count >= max_schools:
+                                            st.error(f"已達合作學校上限（{max_schools} 所），無法再核准。")
+                                        else:
+                                            supabase.table("matches").update({"status": "approved"}).eq("id", m['id']).execute()
+                                            st.success(f"已確認與 {partner_name} 正式合作！")
+                                            st.rerun()
+                                with col2:
+                                    if st.button("❌ 拒絕", key=f"reject_{m['id']}"):
+                                        supabase.table("matches").update({"status": "rejected"}).eq("id", m['id']).execute()
+                                        st.warning(f"已拒絕 {partner_name} 的申請。")
+                                        st.rerun()
                 else:
                     st.write("目前尚無收到申請。")
             else:
