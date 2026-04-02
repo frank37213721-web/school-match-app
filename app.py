@@ -81,6 +81,37 @@ if st.session_state.get("logged_in") and st.session_state.get("school_info"):
             </div>
             """, unsafe_allow_html=True)
 
+    # 拒絕通知：查詢此學校被拒絕的媒合申請
+    if 'dismissed_rejections' not in st.session_state:
+        st.session_state.dismissed_rejections = set()
+    try:
+        rejected_res = supabase.table("matches")\
+            .select("id, course_id")\
+            .eq("partner_school_id", school['id'])\
+            .eq("status", "rejected")\
+            .execute()
+        for rm in rejected_res.data:
+            if rm['id'] not in st.session_state.dismissed_rejections:
+                course_res = supabase.table("courses")\
+                    .select("id, title, max_schools")\
+                    .eq("id", rm['course_id'])\
+                    .execute()
+                if course_res.data:
+                    c = course_res.data[0]
+                    approved_res = supabase.table("matches")\
+                        .select("id")\
+                        .eq("course_id", c['id'])\
+                        .eq("status", "approved")\
+                        .execute()
+                    has_slots = len(approved_res.data) < c.get('max_schools', 2)
+                    slot_msg = "該課程目前仍有名額，您可以再次送出媒合申請。" if has_slots else "該課程目前已無剩餘名額。"
+                    st.warning(f"😔 **媒合申請通知**\n\n很遺憾，您對課程「**{c['title']}**」的媒合申請已被開課學校拒絕。{slot_msg}")
+                    if st.button("知道了", key=f"dismiss_{rm['id']}"):
+                        st.session_state.dismissed_rejections.add(rm['id'])
+                        st.rerun()
+    except Exception:
+        pass
+
 # Email 發送函數
 def send_email(to_email, to_name, subject, content):
     """發送 Email 給指定收件人"""
@@ -864,17 +895,18 @@ elif choice == "配對情形":
                 partner_map = {}
                 if partner_ids:
                     schools_res = supabase.table("schools")\
-                        .select("id, name")\
+                        .select("id, name, registrant_name, registrant_email, academic_director_email, principal_email")\
                         .in_("id", partner_ids)\
                         .execute()
-                    partner_map = {s['id']: s['name'] for s in schools_res.data}
+                    partner_map = {s['id']: s for s in schools_res.data}
 
                 if incoming.data:
                     for m in incoming.data:
                         course = my_course_map.get(m['course_id'], {})
                         course_title = course.get('title', '未知課程')
                         max_schools = course.get('max_schools', 2)
-                        partner_name = partner_map.get(m['partner_school_id'], '未知學校')
+                        partner_info = partner_map.get(m['partner_school_id'], {})
+                        partner_name = partner_info.get('name', '未知學校') if isinstance(partner_info, dict) else partner_info
                         status = m['status']
 
                         status_label = {"pending": "⏳ 待審核", "approved": "✅ 媒合成功", "rejected": "❌ 已拒絕"}.get(status, status)
@@ -886,19 +918,42 @@ elif choice == "配對情形":
                                 col1, col2 = st.columns(2)
                                 with col1:
                                     if st.button("✅ 確認正式合作", key=f"approve_{m['id']}"):
-                                        # 確認核准數量未超過上限
                                         approved_count = len([x for x in incoming.data
                                                               if x['course_id'] == m['course_id'] and x['status'] == 'approved'])
                                         if approved_count >= max_schools:
                                             st.error(f"已達合作學校上限（{max_schools} 所），無法再核准。")
                                         else:
                                             supabase.table("matches").update({"status": "approved"}).eq("id", m['id']).execute()
-                                            st.success(f"已確認與 {partner_name} 正式合作！")
+                                            # 寄信給申請學校三位收件人
+                                            for recipient_email, recipient_name in [
+                                                (partner_info.get('registrant_email'), partner_info.get('registrant_name', '承辦人')),
+                                                (partner_info.get('academic_director_email'), '承辦處室主任'),
+                                                (partner_info.get('principal_email'), '校長'),
+                                            ]:
+                                                if recipient_email and '@' in recipient_email:
+                                                    send_email(
+                                                        recipient_email, recipient_name,
+                                                        f"媒合成功通知：您的課程申請「{course_title}」已被核准",
+                                                        f"親愛的 {recipient_name}：\n\n恭喜！{partner_name} 對課程「{course_title}」的媒合申請已獲得開課學校「{school['name']}」正式核准，雙方合作正式成立。\n\n請與開課學校聯繫後續合作事宜。\n\n跨校課程媒合平台"
+                                                    )
+                                            st.success(f"已確認與 {partner_name} 正式合作，通知 Email 已發送！")
                                             st.rerun()
                                 with col2:
                                     if st.button("❌ 拒絕", key=f"reject_{m['id']}"):
                                         supabase.table("matches").update({"status": "rejected"}).eq("id", m['id']).execute()
-                                        st.warning(f"已拒絕 {partner_name} 的申請。")
+                                        # 寄信給申請學校三位收件人
+                                        for recipient_email, recipient_name in [
+                                            (partner_info.get('registrant_email'), partner_info.get('registrant_name', '承辦人')),
+                                            (partner_info.get('academic_director_email'), '承辦處室主任'),
+                                            (partner_info.get('principal_email'), '校長'),
+                                        ]:
+                                            if recipient_email and '@' in recipient_email:
+                                                send_email(
+                                                    recipient_email, recipient_name,
+                                                    f"媒合申請通知：「{course_title}」申請未獲通過",
+                                                    f"親愛的 {recipient_name}：\n\n很遺憾，{partner_name} 對課程「{course_title}」的媒合申請未獲開課學校「{school['name']}」核准。\n\n若該課程仍有名額，您的學校可以再次送出媒合申請。\n\n跨校課程媒合平台"
+                                                )
+                                        st.warning(f"已拒絕 {partner_name} 的申請，通知 Email 已發送。")
                                         st.rerun()
                 else:
                     st.write("目前尚無收到申請。")
