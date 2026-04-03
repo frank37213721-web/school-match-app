@@ -920,156 +920,145 @@ elif choice == "配對情形":
 
 # 管理員專用頁面
 elif choice == "📊 系統管理":
-    require_admin()  # 要求管理員權限
+    require_admin()
     st.title("📊 系統管理")
-    st.success("🎉 歡迎管理員！")
-    
-    # 建立兩個頁籤
-    tab1, tab2 = st.tabs(["🏫 學校資訊", "📚 課程資訊"])
-    
+
+    ALL_SCHOOLS_BY_DISTRICT = {
+        "北一區": ["國立羅東高級中學","國立蘭陽女子高級中學","國立花蓮高級中學","慈濟大學附屬高級中學","國立基隆高級中學","新北市立中和高級中學","新北市立北大高級中學","新北市立石碇高級中學","新北市立板橋高中","新北市立錦和高級中學","新北市私立徐匯高級中學","新北市金陵女子高級中學","新北市南山高級中學"],
+        "北二區": ["國立臺灣師範大學附屬高級中學","臺北市立中山女子高級中學","臺北市立中正高級中學","臺北市立中崙高級中學","臺北市立內湖高級中學","臺北市立永春高級中學","臺北市立百齡高級中學","臺北市立育成高級中學","臺北市立松山高級中學","臺北市立建國高級中學","臺北市立第一女子高級中學","臺北市立景美女子高級中學","臺北市立陽明高級中學","臺北市立萬芳高級中學","臺北市立麗山高級中學","臺北市數位實驗高級中等學校"],
+        "北三區": ["桃園市立內壢高級中等學校","桃園市立桃園高級中等學校","桃園市立陽明高級中等學校","桃園市立楊梅高級中等學校","桃園市立壽山高級中等學校","國立新竹女子高級中學","新竹市私立曙光女子高級中學"],
+        "中區": ["國立溪湖高級中學","臺中市立大甲高級中等學校","臺中市立中港高級中學","臺中市立文華高級中學","臺中市立清水高級中學","臺中市立第一高級中學","臺中市立第二高級中學","臺中市立惠文高級中學","臺中市立新社高級中學","臺中市立臺中女子高級中等學校","臺中市私立弘文高級中學","國立竹山高級中學","國立斗六高級中學","國立嘉義女子高級中學","國立嘉義高級中學","嘉義縣立竹崎高級中學"],
+        "南區": ["國立臺南第一高級中學","國立臺南第二高級中學","臺南市天主教聖功女子高級中學","臺南市立大灣高級中學","臺南市立永仁高級中學","臺南市光華高級中學","臺南市私立南光高級中學","臺南市德光高級中學","高雄市立三民高級中學","高雄市立中山高級中學","高雄市立前鎮高級中學","高雄市立高雄女子高級中學","高雄市立路竹高級中學","國立中山大學附屬國光高級中學","國立屏東女子高級中學","國立潮州高級中學","國立臺東高級中學"],
+        "其他": ["新竹縣立竹北實驗高中"],
+    }
+
+    tab1, tab2 = st.tabs(["🏫 學校帳號基本資訊", "🤝 配對狀況"])
+
+    # ── Tab 1：學校帳號基本資訊 ──
     with tab1:
-        st.subheader("🏫 已註冊學校資訊")
-        
-        # 獲取所有非管理員帳號
         try:
-            schools = supabase.table("schools").select("*").execute()
-            non_admin_accounts = [s for s in schools.data if not s.get('is_admin', False)]
-            
-            if non_admin_accounts:
-                # 按分區分組顯示
-                districts = {}
-                for account in non_admin_accounts:
-                    district = account.get('district', '未分區')
-                    if district not in districts:
-                        districts[district] = []
-                    districts[district].append(account)
-                
-                for district, accounts in districts.items():
-                    st.write(f"### 🗺️ {district}")
-                    
-                    for account in accounts:
-                        with st.expander(f"🏫 {account['name']} - {account['registrant_name']}"):
-                            col1, col2 = st.columns(2)
-                            
-                            with col1:
-                                st.write("**🔐 登入資訊**")
-                                st.code(f"帳號: {account['phone']}")
-                                st.code("密碼: [已雜湊加密]")  # 不顯示實際雜湊值，更安全
-                                st.write("**📋 基本資料**")
-                                st.write(f"📞 電話: {account['phone']}")
-                                st.write(f"� 分機: {account.get('registrant_extension', '未設定')}")
-                                st.write(f"�🗺️ 分區: {account.get('district', '未設定')}")
-                                st.write(f"👤 承辦人: {account.get('registrant_name', '未設定')}")
-                            
-                            with col2:
-                                st.write("**📧 聯絡資訊**")
-                                st.write(f"承辦處室主任: {account.get('academic_director_email', '未設定')}")
-                                st.write(f"校長: {account.get('principal_email', '未設定')}")
-                                st.write("**🎓 權限設定**")
-                                st.write(f"開課: {'✅' if account.get('is_host') else '❌'}")
-                                st.write(f"合作: {'✅' if account.get('is_partner') else '❌'}")
-                            
-                            st.divider()
-                            # 刪除學校按鈕（連鎖刪除）
-                            delete_key = f"confirm_delete_school_{account['id']}"
-                            if delete_key not in st.session_state:
-                                st.session_state[delete_key] = False
+            all_schools_res = supabase.table("schools").select("*").execute()
+            registered = [s for s in all_schools_res.data if not s.get("is_admin", False)]
+            registered_names = {s["name"] for s in registered}
 
-                            if not st.session_state[delete_key]:
-                                if st.button(f"🗑️ 刪除「{account['name']}」及其所有資料", key=f"del_school_{account['id']}", type="secondary"):
-                                    st.session_state[delete_key] = True
-                                    st.rerun()
-                            else:
-                                st.warning(f"⚠️ 確定要刪除「{account['name']}」？此操作將同時刪除該校所有課程與媒合記錄，且**無法復原**。")
-                                col_yes, col_no = st.columns(2)
-                                with col_yes:
-                                    if st.button("✅ 確認刪除", key=f"yes_school_{account['id']}", type="primary"):
-                                        try:
-                                            delete_school_cascade(account['id'])
-                                            st.success(f"已刪除「{account['name']}」及所有關聯資料。")
-                                            st.session_state[delete_key] = False
-                                            st.rerun()
-                                        except Exception as e:
-                                            st.error(f"刪除失敗：{e}")
-                                with col_no:
-                                    if st.button("❌ 取消", key=f"no_school_{account['id']}"):
+            district_options = ["全部"] + list(ALL_SCHOOLS_BY_DISTRICT.keys())
+            sel_district = st.selectbox("🗺️ 篩選分區", district_options, key="admin_district_filter")
+
+            st.subheader("✅ 已註冊學校")
+            filtered_registered = [
+                s for s in registered
+                if sel_district == "全部" or s.get("district") == sel_district
+            ]
+            if filtered_registered:
+                for account in filtered_registered:
+                    with st.expander(f"🏫 {account['name']}　（{account.get('district','未分區')}）"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.write("**📋 基本資料**")
+                            st.write(f"帳號（電話）：{account.get('phone','—')}")
+                            st.write(f"分機：{account.get('registrant_extension','—')}")
+                            st.write(f"承辦人：{account.get('registrant_name','—')}")
+                            st.write(f"承辦人 Email：{account.get('registrant_email','—')}")
+                        with col2:
+                            st.write("**📧 主管信箱**")
+                            st.write(f"承辦處室主任：{account.get('academic_director_email','—')}")
+                            st.write(f"校長：{account.get('principal_email','—')}")
+                            st.write("**🎓 權限**")
+                            st.write(f"開課：{'✅' if account.get('is_host') else '❌'}　合作：{'✅' if account.get('is_partner') else '❌'}")
+                        st.divider()
+                        delete_key = f"confirm_delete_school_{account['id']}"
+                        if delete_key not in st.session_state:
+                            st.session_state[delete_key] = False
+                        if not st.session_state[delete_key]:
+                            if st.button(f"🗑️ 刪除「{account['name']}」", key=f"del_school_{account['id']}", type="secondary"):
+                                st.session_state[delete_key] = True
+                                st.rerun()
+                        else:
+                            st.warning(f"⚠️ 確定要刪除「{account['name']}」？將同時刪除所有課程與媒合記錄，且**無法復原**。")
+                            col_yes, col_no = st.columns(2)
+                            with col_yes:
+                                if st.button("✅ 確認刪除", key=f"yes_school_{account['id']}", type="primary"):
+                                    try:
+                                        delete_school_cascade(account["id"])
+                                        st.success(f"已刪除「{account['name']}」。")
                                         st.session_state[delete_key] = False
                                         st.rerun()
+                                    except Exception as e:
+                                        st.error(f"刪除失敗：{e}")
+                            with col_no:
+                                if st.button("❌ 取消", key=f"no_school_{account['id']}"):
+                                    st.session_state[delete_key] = False
+                                    st.rerun()
             else:
-                st.info("目前尚無學校註冊帳號。")
+                st.info("此分區尚無已註冊學校。")
+
+            st.subheader("⬜ 尚未註冊學校")
+            unregistered_found = False
+            for district, names in ALL_SCHOOLS_BY_DISTRICT.items():
+                if sel_district != "全部" and district != sel_district:
+                    continue
+                missing = [n for n in names if n not in registered_names]
+                if missing:
+                    unregistered_found = True
+                    st.write(f"**{district}**：" + "、".join(missing))
+            if not unregistered_found:
+                st.info("所有學校皆已註冊帳號。")
 
         except Exception as e:
-            st.error(f"讀取學校資料失敗：{e}")
-    
+            st.error(f"讀取失敗：{e}")
+
+    # ── Tab 2：配對狀況 ──
     with tab2:
-        st.subheader("� 各校課程資訊")
-        
         try:
-            # 獲取所有課程與學校資訊
-            courses = supabase.table("courses")\
-                .select("*, schools(name, district)")\
-                .execute()
-            
-            if courses.data:
-                # 按學校分組顯示課程
-                schools_courses = {}
-                for course in courses.data:
-                    school_name = course['schools']['name']
-                    if school_name not in schools_courses:
-                        schools_courses[school_name] = {
-                            'district': course['schools'].get('district', '未分區'),
-                            'courses': []
-                        }
-                    schools_courses[school_name]['courses'].append(course)
-                
-                for school_name, school_data in schools_courses.items():
-                    st.write(f"### 🏫 {school_name} ({school_data['district']})")
-                    
-                    for course in school_data['courses']:
-                        with st.expander(f"📖 {course['title']}"):
-                            col1, col2 = st.columns(2)
-                            
-                            with col1:
-                                st.write("**⏰ 開課資訊**")
-                                st.write(f"🕐 時間: {course.get('start_time', '未設定')}")
-                                st.write(f"� 學生上限: {course.get('max_students', 'N/A')} 人")
-                                st.write(f"🏫 合作學校上限: {course.get('max_schools', 'N/A')} 所")
-                            
-                            with col2:
-                                st.write("**📝 課程內容**")
-                                if course.get('plan_pdf_url'):
-                                    st.link_button("📥 課程規劃表", course['plan_pdf_url'])
-                                st.write("**📋 課程大綱:**")
-                                st.write(course.get('syllabus', '未設定'))
-                            
-                            # 刪除課程按鈕（連鎖刪除）
-                            delete_key = f"confirm_delete_course_{course['id']}"
-                            if delete_key not in st.session_state:
-                                st.session_state[delete_key] = False
+            courses_res = supabase.table("courses")                .select("id, title, max_schools, host_school_id, schools(name)")                .execute()
 
-                            if not st.session_state[delete_key]:
-                                if st.button(f"🗑️ 刪除課程「{course['title']}」", key=f"del_course_{course['id']}", type="secondary"):
-                                    st.session_state[delete_key] = True
-                                    st.rerun()
-                            else:
-                                st.warning(f"⚠️ 確定要刪除「{course['title']}」？此操作將同時刪除所有媒合記錄，且**無法復原**。")
-                                col_yes, col_no = st.columns(2)
-                                with col_yes:
-                                    if st.button("✅ 確認刪除", key=f"yes_course_{course['id']}", type="primary"):
-                                        try:
-                                            delete_course_cascade(course['id'])
-                                            st.success(f"已刪除課程「{course['title']}」及所有關聯媒合記錄。")
-                                            st.session_state[delete_key] = False
-                                            st.rerun()
-                                        except Exception as e:
-                                            st.error(f"刪除失敗：{e}")
-                                with col_no:
-                                    if st.button("❌ 取消", key=f"no_course_{course['id']}"):
-                                        st.session_state[delete_key] = False
-                                        st.rerun()
-                            st.divider()
+            matches_res = supabase.table("matches")                .select("id, course_id, partner_school_id, status")                .execute()
+            all_matches = matches_res.data
+
+            partner_ids = list({m["partner_school_id"] for m in all_matches})
+            partner_map = {}
+            if partner_ids:
+                p_res = supabase.table("schools").select("id, name").in_("id", partner_ids).execute()
+                partner_map = {s["id"]: s["name"] for s in p_res.data}
+
+            st.subheader("📤 開課學校配對狀況")
+            if courses_res.data:
+                host_courses: dict = {}
+                for c in courses_res.data:
+                    sname = c["schools"]["name"]
+                    host_courses.setdefault(sname, []).append(c)
+
+                for school_name, courses_list in host_courses.items():
+                    st.write(f"**🏫 {school_name}**")
+                    for c in courses_list:
+                        c_matches = [m for m in all_matches if m["course_id"] == c["id"]]
+                        approved = sum(1 for m in c_matches if m["status"] == "approved")
+                        pending  = sum(1 for m in c_matches if m["status"] == "pending")
+                        max_s    = c.get("max_schools", 2)
+                        if approved >= max_s:
+                            badge = f"🔴 {approved}/{max_s} 已配對額滿"
+                        elif approved > 0:
+                            badge = f"🟡 {approved}/{max_s} 仍有配對名額"
+                        else:
+                            badge = f"⚪ 0/{max_s} 尚無配對學校"
+                        st.write(f"　　📖 {c['title']}　{badge}　⏳待審核 {pending} 所")
+                    st.divider()
             else:
-                st.info("目前尚無任何課程資訊。")
+                st.info("目前尚無任何課程。")
+
+            st.subheader("📥 申請學校配對狀況")
+            if all_matches:
+                from collections import defaultdict
+                stats: dict = defaultdict(lambda: {"total": 0, "approved": 0})
+                for m in all_matches:
+                    stats[m["partner_school_id"]]["total"] += 1
+                    if m["status"] == "approved":
+                        stats[m["partner_school_id"]]["approved"] += 1
+                for pid, s in stats.items():
+                    sname = partner_map.get(pid, f"學校 {pid}")
+                    st.write(f"**{sname}**　共送出 {s['total']} 次申請，已成功配對 {s['approved']} 次")
+            else:
+                st.info("目前尚無任何媒合申請記錄。")
 
         except Exception as e:
-            st.error(f"讀取課程資料失敗：{e}")
+            st.error(f"讀取配對資料失敗：{e}")
