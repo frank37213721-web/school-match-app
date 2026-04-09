@@ -986,7 +986,13 @@ elif choice == "配對情形":
                 for m in outgoing.data:
                     course = course_map.get(m['course_id'], {})
                     host_name = host_map.get(course.get('host_school_id'), '未知學校')
-                    st.success(f"🚀 您向 **{host_name}** 申請了「{course.get('title', '未知課程')}」（狀態：{m['status']}）")
+                    status_label = {"pending": "⏳ 審核中", "approved": "🎉 媒合成功", "rejected": "❌ 已拒絕"}.get(m['status'], m['status'])
+                    if m['status'] == 'approved':
+                        st.success(f"🎉 **媒合成功**　您與 **{host_name}** 的「{course.get('title', '未知課程')}」合作已確認！")
+                    elif m['status'] == 'rejected':
+                        st.error(f"❌ **已拒絕**　您向 **{host_name}** 申請的「{course.get('title', '未知課程')}」未獲通過。")
+                    else:
+                        st.info(f"⏳ **審核中**　您向 **{host_name}** 申請了「{course.get('title', '未知課程')}」，請等候回覆。")
             else:
                 st.write("您尚未申請任何課程。")
         except Exception as e:
