@@ -103,14 +103,7 @@ if st.session_state.get("logged_in") and st.session_state.get("school_info"):
                     .execute()
                 if course_res.data:
                     c = course_res.data[0]
-                    approved_res = supabase.table("matches")\
-                        .select("id")\
-                        .eq("course_id", c['id'])\
-                        .eq("status", "approved")\
-                        .execute()
-                    has_slots = len(approved_res.data) < c.get('max_schools', 2)
-                    slot_msg = "該課程目前仍有名額，您可以再次送出媒合申請。" if has_slots else "該課程目前已無剩餘名額。"
-                    st.warning(f"😔 **媒合申請通知**\n\n很遺憾，您對課程「**{c['title']}**」的媒合申請已被開課學校婉拒。{slot_msg}")
+                    st.warning(f"😔 **媒合申請通知**\n\n很遺憾，您對課程「**{c['title']}**」的媒合申請已被開課學校婉拒。")
                     if st.button("知道了", key=f"dismiss_{rm['id']}"):
                         st.session_state.dismissed_rejections.add(rm['id'])
                         st.rerun()
@@ -947,7 +940,7 @@ elif choice == "配對情形":
                                                 send_email(
                                                     recipient_email, recipient_name,
                                                     f"媒合申請通知：「{course_title}」申請未獲通過",
-                                                    f"親愛的 {recipient_name}：\n\n很遺憾，{partner_name} 對課程「{course_title}」的媒合申請已被開課學校「{school['name']}」婉拒。\n\n若該課程仍有名額，您的學校可以再次送出媒合申請。\n\n跨校課程媒合平台"
+                                                    f"親愛的 {recipient_name}：\n\n很遺憾，{partner_name} 對課程「{course_title}」的媒合申請已被開課學校「{school['name']}」婉拒。\n\n跨校課程媒合平台"
                                                 )
                                         st.warning(f"已婉拒 {partner_name} 的申請，通知 Email 已發送。")
                                         st.rerun()
