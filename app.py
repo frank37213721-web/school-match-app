@@ -823,36 +823,41 @@ elif choice == "學校帳號登入":
             ]
         }
         
-        # 第一步：選擇分區
-        selected_district = st.selectbox("1. 選擇分區", list(schools_by_district.keys()))
-        
-        # 第二步：選擇該分區下的學校
-        schools_in_district = schools_by_district[selected_district]
-        selected_school = st.selectbox("2. 選擇學校", schools_in_district)
-        
+        # ── 1. 選擇學校名稱 ──
+        st.write("### 1. 選擇學校名稱")
+        col_d, col_s = st.columns(2)
+        with col_d:
+            selected_district = st.selectbox("選擇分區", list(schools_by_district.keys()))
+        with col_s:
+            schools_in_district = schools_by_district[selected_district]
+            selected_school = st.selectbox("選擇學校", schools_in_district)
+
         district = selected_district
         school_name = selected_school
-        
-        # 聯絡人基本資訊
-        st.write("### 3. 承辦人資訊")
-        registrant_name = st.text_input("承辦人姓名", placeholder="例：王小明")
-        registrant_extension = st.text_input("承辦人分機", placeholder="例：123", max_chars=10)
 
-        # 學校電話作為帳號
-        school_phone = st.text_input("4. 學校電話（帳號，請含區域號碼）", placeholder="例：073475181", max_chars=10)
+        st.divider()
+
+        # ── 2. 承辦人資訊 ──
+        st.write("### 2. 承辦人資訊")
+        col_n, col_ext = st.columns(2)
+        with col_n:
+            registrant_name = st.text_input("承辦人姓名", placeholder="例：王小明")
+        with col_ext:
+            registrant_extension = st.text_input("承辦人分機", placeholder="例：123", max_chars=10)
+
+        school_phone = st.text_input("學校電話（作為登入帳號，請含區域號碼）",
+                                     placeholder="例：073475181", max_chars=10)
         st.caption("⚠️ 請輸入含區域號碼的完整電話，例如高雄市為 07、台北市為 02")
 
-        # 自動生成預設密碼（電話後4碼）
         default_password = school_phone[-4:] if len(school_phone) >= 4 else ""
-        
-        # 將預設密碼進行雜湊處理
         hashed_password = hash_password(default_password) if default_password else ""
+        st.info(f"🔒 預設密碼（電話後4碼）：{'**' + default_password + '**' if default_password else '請輸入完整電話號碼'}")
 
-        st.info(f"📞 預設密碼：{default_password if default_password else '請輸入完整電話號碼'}")
+        st.divider()
 
-        # 聯絡人 Email
-        st.write("### 聯絡人資訊")
-        registrant_email = st.text_input("承辦人 Email")  # 補回這個輸入框
+        # ── 3. 學校重要聯絡人 Email ──
+        st.write("### 3. 學校重要聯絡人 Email")
+        registrant_email = st.text_input("承辦人 Email")
         academic_director_email = st.text_input("承辦處室主任 Email")
         principal_email = st.text_input("校長 Email")
 
