@@ -146,6 +146,211 @@ def render_lobby():
     )
 
     # ── 課程卡片 ──
+    # 添加立體感卡片樣式
+    st.markdown("""
+    <style>
+    .course-card {
+        background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 16px;
+        box-shadow: 
+            0 4px 6px -1px rgba(0, 0, 0, 0.1),
+            0 2px 4px -1px rgba(0, 0, 0, 0.06),
+            0 0 0 1px rgba(0, 0, 0, 0.05),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        position: relative;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transform-style: preserve-3d;
+        transform: perspective(1000px) rotateX(0deg) rotateY(0deg);
+    }
+    
+    .course-card:hover {
+        transform: perspective(1000px) rotateX(-2deg) rotateY(2deg) translateY(-4px);
+        box-shadow: 
+            0 20px 25px -5px rgba(0, 0, 0, 0.1),
+            0 10px 10px -5px rgba(0, 0, 0, 0.04),
+            0 0 0 1px rgba(0, 0, 0, 0.05),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        border-color: rgba(99, 102, 241, 0.3);
+    }
+    
+    .course-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
+        border-radius: 16px 16px 0 0;
+        opacity: 0.8;
+    }
+    
+    .course-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 0.5rem;
+        line-height: 1.3;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    
+    .course-meta {
+        font-size: 0.875rem;
+        color: #64748b;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .course-tags {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.75rem;
+    }
+    
+    .course-tag {
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        color: #475569;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.5rem 1rem;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        border: 1px solid;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .status-badge::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        transition: left 0.5s;
+    }
+    
+    .status-badge:hover::before {
+        left: 100%;
+    }
+    
+    .status-open {
+        background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+        color: #166534;
+        border-color: #86efac;
+        box-shadow: 0 2px 4px rgba(34, 197, 94, 0.1);
+    }
+    
+    .status-pending {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        color: #92400e;
+        border-color: #fcd34d;
+        box-shadow: 0 2px 4px rgba(245, 158, 11, 0.1);
+    }
+    
+    .status-full {
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        color: #991b1b;
+        border-color: #fca5a5;
+        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.1);
+    }
+    
+    .course-button {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 600;
+        font-size: 0.875rem;
+        box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
+        transition: all 0.2s;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .course-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(99, 102, 241, 0.3);
+    }
+    
+    .course-button:active {
+        transform: translateY(0);
+    }
+    
+    .course-button::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.3s, height 0.3s;
+    }
+    
+    .course-button:hover::after {
+        width: 100%;
+        height: 100%;
+    }
+    
+    /* 覆蓋 Streamlit 預設樣式 */
+    .stContainer > div > div[style*="border: 1px solid rgb(240, 242, 246)"] {
+        background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%) !important;
+        border-radius: 16px !important;
+        box-shadow: 
+            0 4px 6px -1px rgba(0, 0, 0, 0.1),
+            0 2px 4px -1px rgba(0, 0, 0, 0.06),
+            0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+        border: 1px solid rgba(226, 232, 240, 0.8) !important;
+        padding: 1.5rem !important;
+        position: relative !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    
+    .stContainer > div > div[style*="border: 1px solid rgb(240, 242, 246)"]:hover {
+        transform: perspective(1000px) rotateX(-2deg) rotateY(2deg) translateY(-4px) !important;
+        box-shadow: 
+            0 20px 25px -5px rgba(0, 0, 0, 0.1),
+            0 10px 10px -5px rgba(0, 0, 0, 0.04),
+            0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+        border-color: rgba(99, 102, 241, 0.3) !important;
+    }
+    
+    .stContainer > div > div[style*="border: 1px solid rgb(240, 242, 246)"]::before {
+        content: '' !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 3px !important;
+        background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899) !important;
+        border-radius: 16px 16px 0 0 !important;
+        opacity: 0.8 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     for c in page_courses:
         course_matches = matches_by_course.get(c['id'], [])
         approved_count = sum(1 for m in course_matches if m['status'] == 'approved')
@@ -167,33 +372,43 @@ def render_lobby():
             col_main, col_status, col_btn = st.columns([6, 2, 2])
 
             with col_main:
-                # 標籤列
-                tags = []
+                # 標籤列 - 使用新的課程標籤樣式
+                tags_html = []
                 if c.get('course_type'):
-                    tags.append(f"`{c['course_type']}`")
+                    tags_html.append(f"<span class='course-tag'>{c['course_type']}</span>")
                 if c.get('credits'):
-                    tags.append(f"`{c['credits']} 學分`")
-                if tags:
-                    st.markdown(" ".join(tags))
-                # 課程名稱（大標）
-                st.markdown(f"**{c['title']}**")
-                # 學校 · 分區 · 時間（小字）
+                    tags_html.append(f"<span class='course-tag'>{c['credits']} 學分</span>")
+                if tags_html:
+                    st.markdown(f"<div class='course-tags'>{''.join(tags_html)}</div>", unsafe_allow_html=True)
+                
+                # 課程名稱（大標） - 使用新的標題樣式
+                st.markdown(f"<div class='course-title'>{c['title']}</div>", unsafe_allow_html=True)
+                
+                # 學校 · 分區 · 時間（小字） - 使用新的元信息樣式
                 school_info = c.get('schools', {})
                 district    = school_info.get('district', '')
                 school_name = school_info.get('name', '')
                 time_str    = c.get('start_time', '未設定')
-                st.caption(f"🏫 {school_name}　{'· ' + district if district else ''}　🗓️ {time_str}")
+                st.markdown(f"<div class='course-meta'>🏫 {school_name}　{'· ' + district if district else ''}　🗓️ {time_str}</div>", unsafe_allow_html=True)
 
             with col_status:
+                # 狀態徽章 - 使用新的狀態樣式
                 if is_full:
-                    st.markdown("<div style='color:#e05555;font-weight:600;padding-top:0.8rem'>🔴 名額已滿</div>", unsafe_allow_html=True)
+                    st.markdown("<div class='status-badge status-full'>🔴 名額已滿</div>", unsafe_allow_html=True)
                 elif approved_count > 0:
-                    st.markdown(f"<div style='color:#d08800;font-weight:600;padding-top:0.8rem'>🟡 {approved_count}/{max_schools} 所</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='status-badge status-pending'>🟡 {approved_count}/{max_schools} 所</div>", unsafe_allow_html=True)
                 else:
-                    st.markdown(f"<div style='color:#2563a8;font-weight:600;padding-top:0.8rem'>🟢 開放中 0/{max_schools}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='status-badge status-open'>🟢 開放中 0/{max_schools}</div>", unsafe_allow_html=True)
 
             with col_btn:
                 st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
+                # 使用新的按鈕樣式類別
+                button_html = f"""
+                <button class='course-button' onclick='document.querySelector("[data-testid=\\"stButton\\"]").click()'>
+                    詳情 {'▾' if not st.session_state[detail_key] else '▴'}
+                </button>
+                """
+                st.markdown(button_html, unsafe_allow_html=True)
                 if st.button("詳情 ▾" if not st.session_state[detail_key] else "詳情 ▴",
                              key=f"dtl_{c['id']}", use_container_width=True):
                     st.session_state[detail_key] = not st.session_state[detail_key]
