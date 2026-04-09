@@ -1,7 +1,20 @@
+import re
 import streamlit as st
 from utils import supabase, require_login, upload_pdf, delete_course_cascade
 
 COURSE_TYPES = ["部定必修", "加深加廣選修", "校訂必修", "多元選修", "彈性課程"]
+DAYS = ["週一", "週二", "週三", "週四", "週五", "週六"]
+
+
+def _parse_time(time_str):
+    """從已儲存的時間字串解析出 (day_idx, start_h, end_h)，解析失敗回傳預設值。"""
+    if not time_str:
+        return 0, 8, 10
+    m = re.match(r"(週[一二三四五六])\s*(\d{1,2}):00\s*[~～\-]\s*(\d{1,2}):00", time_str)
+    if m:
+        day_idx = DAYS.index(m.group(1)) if m.group(1) in DAYS else 0
+        return day_idx, int(m.group(2)), int(m.group(3))
+    return 0, 8, 10
 
 
 def render_add_course():
@@ -23,7 +36,16 @@ def render_add_course():
                 c_type = st.selectbox("課程種類", COURSE_TYPES)
             with col_credits:
                 c_credits = st.number_input("學分數（一學期）", min_value=0, max_value=4, value=0)
-            c_time     = st.text_input("開課時間", placeholder="例：每週三 14:00-16:00")
+            st.write("**🗓️ 開課時間**")
+            col_day, col_sh, col_eh = st.columns([2, 2, 2])
+            with col_day:
+                c_day = st.selectbox("星期", DAYS, key="add_day")
+            with col_sh:
+                c_start_h = st.number_input("開始時間（時）", min_value=0, max_value=23, value=8, step=1, key="add_sh", format="%02d")
+            with col_eh:
+                c_end_h = st.number_input("結束時間（時）", min_value=0, max_value=23, value=10, step=1, key="add_eh", format="%02d")
+            c_time = f"{c_day} {c_start_h:02d}:00 ~ {c_end_h:02d}:00"
+            st.caption(f"📅 開課時間：{c_time}")
             c_students  = st.number_input("跨校學生人數上限", min_value=0, value=20)
             c_schools   = st.number_input("跨校學校數目上限", min_value=0, value=2)
             st.write("**🎓 每校希望學生人數範圍（選填）**")
@@ -89,7 +111,17 @@ def render_add_course():
                                 e_type = st.selectbox("課程種類", COURSE_TYPES, index=type_idx, key=f"type_{c['id']}")
                             with col_credits_e:
                                 e_credits = st.number_input("學分數（一學期）", min_value=0, max_value=4, value=c.get('credits') or 0, key=f"credits_{c['id']}")
-                            e_time     = st.text_input("開課時間", value=c.get('start_time', ''))
+                            st.write("**🗓️ 開課時間**")
+                            _day_idx, _sh, _eh = _parse_time(c.get('start_time', ''))
+                            col_day_e, col_sh_e, col_eh_e = st.columns([2, 2, 2])
+                            with col_day_e:
+                                e_day = st.selectbox("星期", DAYS, index=_day_idx, key=f"day_{c['id']}")
+                            with col_sh_e:
+                                e_start_h = st.number_input("開始時間（時）", min_value=0, max_value=23, value=_sh, step=1, key=f"sh_{c['id']}", format="%02d")
+                            with col_eh_e:
+                                e_end_h = st.number_input("結束時間（時）", min_value=0, max_value=23, value=_eh, step=1, key=f"eh_{c['id']}", format="%02d")
+                            e_time = f"{e_day} {e_start_h:02d}:00 ~ {e_end_h:02d}:00"
+                            st.caption(f"📅 開課時間：{e_time}")
                             e_students  = st.number_input("跨校學生人數上限", min_value=0, value=c.get('max_students', 20))
                             e_schools   = st.number_input("跨校學校數目上限", min_value=0, value=c.get('max_schools', 2))
                             st.write("**🎓 每校希望學生人數範圍（選填）**")
