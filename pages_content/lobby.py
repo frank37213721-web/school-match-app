@@ -57,60 +57,69 @@ def render_lobby():
     # ── 課程大廳 ──
     st.markdown("""
     <style>
-    /* 課程卡片：深色底、淺色字 */
-    [data-testid="stVerticalBlockBorderWrapper"] {
-        background: linear-gradient(135deg, #1e2d50 0%, #162440 100%) !important;
-        border: 1px solid rgba(100,140,200,0.25) !important;
-        border-radius: 12px !important;
-        box-shadow: 0 2px 12px rgba(10,20,50,0.18) !important;
+    /* ── 課程卡片深色主題 ── */
+    /* 外框 wrapper */
+    .stMain [data-testid="stVerticalBlockBorderWrapper"] {
+        background: transparent !important;
+        border: none !important;
+        border-radius: 14px !important;
+        padding: 0 !important;
+        box-shadow: 0 6px 24px rgba(8,16,40,0.35) !important;
     }
-    /* 卡片內所有文字改為淺色 */
-    [data-testid="stVerticalBlockBorderWrapper"] p,
-    [data-testid="stVerticalBlockBorderWrapper"] span,
-    [data-testid="stVerticalBlockBorderWrapper"] label,
-    [data-testid="stVerticalBlockBorderWrapper"] li,
-    [data-testid="stVerticalBlockBorderWrapper"] div {
-        color: #dce8ff !important;
+    /* 實際內容 div（Streamlit emotion 把背景放這裡） */
+    .stMain [data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] {
+        background: linear-gradient(140deg, #1c2d52 0%, #111e38 100%) !important;
+        border: 1px solid rgba(90,130,210,0.3) !important;
+        border-radius: 14px !important;
+        padding: 1.1rem 1.3rem !important;
     }
-    [data-testid="stVerticalBlockBorderWrapper"] strong {
-        color: #ffffff !important;
+    /* 文字 */
+    .stMain [data-testid="stVerticalBlockBorderWrapper"] p,
+    .stMain [data-testid="stVerticalBlockBorderWrapper"] span,
+    .stMain [data-testid="stVerticalBlockBorderWrapper"] li {
+        color: #cddcf5 !important;
     }
-    /* code 標籤（種類/學分 tag） */
-    [data-testid="stVerticalBlockBorderWrapper"] code {
-        background: rgba(100,160,255,0.18) !important;
-        color: #90c0ff !important;
-        border: 1px solid rgba(100,160,255,0.25) !important;
+    .stMain [data-testid="stVerticalBlockBorderWrapper"] strong {
+        color: #f0f6ff !important;
+    }
+    /* caption */
+    .stMain [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stCaptionContainer"] p {
+        color: #7a9cc8 !important;
+    }
+    /* code tag（種類/學分） */
+    .stMain [data-testid="stVerticalBlockBorderWrapper"] code {
+        background: rgba(80,140,255,0.15) !important;
+        color: #80b8ff !important;
+        border: 1px solid rgba(80,140,255,0.28) !important;
         border-radius: 4px !important;
-        padding: 0 0.35em !important;
-        font-size: 0.82em !important;
+        font-size: 0.8em !important;
     }
-    /* caption 小字 */
-    [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stCaptionContainer"] p {
-        color: #8aaad8 !important;
+    /* 卡片內一般按鈕：半透明白 */
+    .stMain [data-testid="stVerticalBlockBorderWrapper"] .stButton > button {
+        background: rgba(255,255,255,0.08) !important;
+        color: #cddcf5 !important;
+        border: 1px solid rgba(255,255,255,0.18) !important;
     }
-    /* 卡片內按鈕維持淺色底、深色字 */
-    [data-testid="stVerticalBlockBorderWrapper"] .stButton > button {
-        background-color: rgba(255,255,255,0.1) !important;
-        color: #dce8ff !important;
-        border: 1px solid rgba(255,255,255,0.2) !important;
+    .stMain [data-testid="stVerticalBlockBorderWrapper"] .stButton > button:hover {
+        background: rgba(255,255,255,0.16) !important;
     }
-    [data-testid="stVerticalBlockBorderWrapper"] .stButton > button:hover {
-        background-color: rgba(255,255,255,0.18) !important;
-    }
-    /* 申請按鈕（primary）維持藍色 */
-    [data-testid="stVerticalBlockBorderWrapper"] [data-testid="baseButton-primary"],
-    [data-testid="stVerticalBlockBorderWrapper"] .stButton > button[kind="primary"] {
-        background-color: #2563a8 !important;
+    /* primary 申請按鈕 */
+    .stMain [data-testid="stVerticalBlockBorderWrapper"] [data-testid="baseButton-primary"] {
+        background: #2563a8 !important;
         border-color: #2563a8 !important;
         color: #ffffff !important;
     }
-    /* hr 分隔線 */
-    [data-testid="stVerticalBlockBorderWrapper"] hr {
-        border-color: rgba(255,255,255,0.12) !important;
+    /* hr */
+    .stMain [data-testid="stVerticalBlockBorderWrapper"] hr {
+        border-color: rgba(255,255,255,0.1) !important;
     }
-    /* checkbox 文字 */
-    [data-testid="stVerticalBlockBorderWrapper"] .stCheckbox label p {
-        color: #dce8ff !important;
+    /* checkbox label */
+    .stMain [data-testid="stVerticalBlockBorderWrapper"] .stCheckbox label p {
+        color: #cddcf5 !important;
+    }
+    /* label（欄位標題）*/
+    .stMain [data-testid="stVerticalBlockBorderWrapper"] label {
+        color: #cddcf5 !important;
     }
     </style>
     """, unsafe_allow_html=True)
