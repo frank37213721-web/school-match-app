@@ -93,12 +93,12 @@ supabase = create_client(url, key)
 
 st.set_page_config(page_title="跨校課程媒合平台", layout="wide")
 
-# --- 全域深海藍主題 ---
+# --- 全域淺藍主題（同首頁色調，淺色調） ---
 st.markdown("""
 <style>
-/* ── 背景 ── */
+/* ── 背景：淺藍灰，與首頁 navy 同色系 ── */
 .stApp {
-    background: linear-gradient(160deg, #1a1f2e 0%, #202840 55%, #1a1f30 100%) !important;
+    background: linear-gradient(160deg, #eef2fa 0%, #e8eef8 55%, #edf1f9 100%) !important;
 }
 
 /* ── 主文字 ── */
@@ -106,29 +106,30 @@ html, body, [class*="css"], .stMarkdown, .stText, p, li, label,
 h1, h2, h3, h4, h5, h6,
 [data-testid="stMarkdownContainer"] p,
 [data-testid="stMarkdownContainer"] li {
-    color: #e8eaf0 !important;
+    color: #1a2340 !important;
 }
 
 /* ── 標題 ── */
-h1, h2, h3 { color: #c8d8f0 !important; }
+h1, h2, h3 { color: #1a2a4a !important; }
 
 /* ── 側邊欄 ── */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #141928 0%, #1c2338 100%) !important;
+    background: linear-gradient(180deg, #dce6f5 0%, #d0dcf0 100%) !important;
 }
-[data-testid="stSidebar"] * { color: #c8d4e8 !important; }
-[data-testid="stSidebar"] .stSelectbox label { color: #8fa8cc !important; }
+[data-testid="stSidebar"] * { color: #1a2a4a !important; }
+[data-testid="stSidebar"] label { color: #2a3a60 !important; font-weight: 500 !important; }
 
 /* ── Selectbox / dropdown ── */
 [data-testid="stSelectbox"] > div > div {
-    background-color: #1e2538 !important;
-    border: 1px solid #2e3a54 !important;
-    color: #e0e8f4 !important;
+    background-color: #ffffff !important;
+    border: 1px solid #b0c4e0 !important;
+    color: #1a2340 !important;
 }
-[data-baseweb="select"] * { color: #e0e8f4 !important; }
-[data-baseweb="popover"] { background-color: #1e2538 !important; }
-[data-baseweb="menu"] { background-color: #1e2538 !important; }
-[data-baseweb="option"]:hover { background-color: #2a3550 !important; }
+[data-baseweb="select"] * { color: #1a2340 !important; }
+[data-baseweb="popover"] { background-color: #ffffff !important; }
+[data-baseweb="menu"] { background-color: #ffffff !important; }
+[data-baseweb="option"] { color: #1a2340 !important; }
+[data-baseweb="option"]:hover { background-color: #dce8f8 !important; }
 
 /* ── Text input / textarea ── */
 [data-baseweb="input"] input,
@@ -136,24 +137,24 @@ h1, h2, h3 { color: #c8d8f0 !important; }
 .stTextInput input,
 .stTextArea textarea,
 .stNumberInput input {
-    background-color: #1e2538 !important;
-    border: 1px solid #2e3a54 !important;
-    color: #e0e8f4 !important;
+    background-color: #ffffff !important;
+    border: 1px solid #b0c4e0 !important;
+    color: #1a2340 !important;
     border-radius: 6px !important;
 }
 .stTextInput input::placeholder,
-.stTextArea textarea::placeholder { color: #5a7090 !important; }
+.stTextArea textarea::placeholder { color: #8098b8 !important; }
 
 /* ── Buttons ── */
 .stButton > button {
-    background-color: #2a3a5c !important;
-    color: #d0e4ff !important;
-    border: 1px solid #3a4f78 !important;
+    background-color: #dce8f8 !important;
+    color: #1a3060 !important;
+    border: 1px solid #a0b8d8 !important;
     border-radius: 8px !important;
 }
 .stButton > button:hover {
-    background-color: #344870 !important;
-    border-color: #4a6090 !important;
+    background-color: #c8d8f0 !important;
+    border-color: #7a9cc8 !important;
 }
 .stButton > button[kind="primary"] {
     background-color: #2563a8 !important;
@@ -167,86 +168,69 @@ h1, h2, h3 { color: #c8d8f0 !important; }
 /* ── Tabs ── */
 [data-testid="stTabs"] [data-baseweb="tab-list"] {
     background-color: transparent !important;
-    border-bottom: 1px solid #2e3a54 !important;
+    border-bottom: 1px solid #b0c4e0 !important;
 }
 [data-testid="stTabs"] [data-baseweb="tab"] {
-    color: #8fa8cc !important;
+    color: #4a6a9a !important;
     background-color: transparent !important;
 }
 [data-testid="stTabs"] [aria-selected="true"] {
-    color: #c8d8f0 !important;
-    border-bottom: 2px solid #4a8cdb !important;
+    color: #1a3060 !important;
+    border-bottom: 2px solid #2563a8 !important;
 }
 
 /* ── Expander ── */
 [data-testid="stExpander"] {
-    background-color: rgba(30, 37, 56, 0.7) !important;
-    border: 1px solid #2e3a54 !important;
+    background-color: rgba(255, 255, 255, 0.75) !important;
+    border: 1px solid #b0c4e0 !important;
     border-radius: 8px !important;
 }
 [data-testid="stExpander"] summary,
 [data-testid="stExpander"] summary p {
-    color: #c0d0e8 !important;
+    color: #1a2a4a !important;
 }
 
 /* ── Metric boxes ── */
 [data-testid="stMetric"] {
-    background-color: rgba(30, 37, 56, 0.7) !important;
-    border: 1px solid #2e3a54 !important;
+    background-color: rgba(255, 255, 255, 0.8) !important;
+    border: 1px solid #b0c4e0 !important;
     border-radius: 8px !important;
     padding: 0.8rem 1rem !important;
 }
-[data-testid="stMetricValue"] { color: #a8c8f0 !important; }
-[data-testid="stMetricLabel"] { color: #7090b0 !important; }
+[data-testid="stMetricValue"] { color: #1a3060 !important; }
+[data-testid="stMetricLabel"] { color: #4a6a9a !important; }
 
 /* ── Info / Warning / Error / Success banners ── */
 [data-testid="stAlert"] {
-    background-color: rgba(25, 35, 55, 0.85) !important;
     border-radius: 8px !important;
 }
-.stAlert [data-testid="stMarkdownContainer"] p { color: #d0dff0 !important; }
 
 /* ── File uploader ── */
 [data-testid="stFileUploader"] {
-    background-color: rgba(30, 37, 56, 0.6) !important;
-    border: 1px dashed #3a4f78 !important;
+    background-color: rgba(255, 255, 255, 0.7) !important;
+    border: 1px dashed #90b0d8 !important;
     border-radius: 8px !important;
 }
 
 /* ── Dataframe / table ── */
-[data-testid="stDataFrame"] { background-color: rgba(20, 28, 48, 0.8) !important; }
-.dvn-scroller { background-color: transparent !important; }
+[data-testid="stDataFrame"] { background-color: rgba(255, 255, 255, 0.8) !important; }
 
 /* ── Radio / Checkbox ── */
-.stRadio label, .stCheckbox label { color: #c0d0e8 !important; }
-
-/* ── Number input spinners ── */
-[data-baseweb="spinner"] { background-color: #1e2538 !important; }
+.stRadio label, .stCheckbox label { color: #1a2a4a !important; }
 
 /* ── Divider ── */
-hr { border-color: #2e3a54 !important; }
+hr { border-color: #b0c4e0 !important; }
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #141928; }
-::-webkit-scrollbar-thumb { background: #2e3a60; border-radius: 3px; }
+::-webkit-scrollbar-track { background: #dce6f5; }
+::-webkit-scrollbar-thumb { background: #90b0d8; border-radius: 3px; }
 </style>
 """, unsafe_allow_html=True)
 
-# 顯示登入狀態 - 在 Deploy 按鈕旁邊顯示
+# 拒絕通知：僅對已登入的合作學校顯示
 if st.session_state.get("logged_in") and st.session_state.get("school_info"):
     school = st.session_state.school_info
-    # 使用 Streamlit 的 columns 來在頂部創建一個橫幅
-    with st.container():
-        col1, col2, col3 = st.columns([2, 1, 1])
-        with col3:
-            st.markdown(f"""
-            <div style="background-color: rgba(30,50,80,0.7); padding: 8px 12px; border-radius: 8px; border-left: 4px solid #4a8cdb; margin-top: 10px; color: #c8d8f0;">
-                👋 你好，{school['name']}{school['registrant_name']}{school['identity']}
-            </div>
-            """, unsafe_allow_html=True)
-
-    # 拒絕通知：查詢此學校被拒絕的媒合申請
     if 'dismissed_rejections' not in st.session_state:
         st.session_state.dismissed_rejections = set()
     try:
