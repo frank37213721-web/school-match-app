@@ -1,6 +1,8 @@
 import streamlit as st
 from utils import supabase, require_login, upload_pdf, delete_course_cascade
 
+COURSE_TYPES = ["部定必修", "加深加廣選修", "校訂必修", "多元選修", "彈性課程"]
+
 
 def render_add_course():
     require_login()
@@ -16,6 +18,11 @@ def render_add_course():
     with tab_add:
         with st.form("course_form_add"):
             c_title    = st.text_input("課程名稱")
+            col_type, col_credits = st.columns(2)
+            with col_type:
+                c_type = st.selectbox("課程種類", COURSE_TYPES)
+            with col_credits:
+                c_credits = st.number_input("學分數（一學期）", min_value=0, max_value=4, value=0)
             c_time     = st.text_input("開課時間", placeholder="例：每週三 14:00-16:00")
             c_students  = st.number_input("跨校學生人數上限", min_value=0, value=20)
             c_schools   = st.number_input("跨校學校數目上限", min_value=0, value=2)
@@ -45,6 +52,8 @@ def render_add_course():
                             supabase.table("courses").insert({
                                 "host_school_id": school['id'],
                                 "title": c_title,
+                                "course_type": c_type,
+                                "credits": c_credits if c_credits > 0 else None,
                                 "start_time": c_time,
                                 "max_students": c_students,
                                 "max_schools": c_schools,
@@ -63,7 +72,7 @@ def render_add_course():
     with tab_edit:
         try:
             my_courses = supabase.table("courses")\
-                .select("id, title, start_time, max_students, max_schools, syllabus, plan_pdf_url, sps_min, sps_max, req_1, req_2, req_3")\
+                .select("id, title, course_type, credits, start_time, max_students, max_schools, syllabus, plan_pdf_url, sps_min, sps_max, req_1, req_2, req_3")\
                 .eq("host_school_id", school['id'])\
                 .execute()
             if not my_courses.data:
@@ -73,6 +82,13 @@ def render_add_course():
                     with st.expander(f"📖 {c['title']}"):
                         with st.form(f"edit_form_{c['id']}"):
                             e_title    = st.text_input("課程名稱", value=c['title'])
+                            col_type_e, col_credits_e = st.columns(2)
+                            with col_type_e:
+                                cur_type = c.get('course_type') or COURSE_TYPES[0]
+                                type_idx = COURSE_TYPES.index(cur_type) if cur_type in COURSE_TYPES else 0
+                                e_type = st.selectbox("課程種類", COURSE_TYPES, index=type_idx, key=f"type_{c['id']}")
+                            with col_credits_e:
+                                e_credits = st.number_input("學分數（一學期）", min_value=0, max_value=4, value=c.get('credits') or 0, key=f"credits_{c['id']}")
                             e_time     = st.text_input("開課時間", value=c.get('start_time', ''))
                             e_students  = st.number_input("跨校學生人數上限", min_value=0, value=c.get('max_students', 20))
                             e_schools   = st.number_input("跨校學校數目上限", min_value=0, value=c.get('max_schools', 2))
@@ -105,6 +121,8 @@ def render_add_course():
                                         try:
                                             supabase.table("courses").update({
                                                 "title": e_title,
+                                                "course_type": e_type,
+                                                "credits": e_credits if e_credits > 0 else None,
                                                 "start_time": e_time,
                                                 "max_students": e_students,
                                                 "max_schools": e_schools,

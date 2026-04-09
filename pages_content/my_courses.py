@@ -4,6 +4,8 @@ from utils import supabase, require_login
 
 COLUMN_NAMES = {
     "title": "課程名稱",
+    "course_type": "課程種類",
+    "credits": "學分數",
     "syllabus": "課程大綱",
     "plan_details": "課程計畫說明",
     "start_time": "開課時間",

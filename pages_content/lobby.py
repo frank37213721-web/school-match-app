@@ -89,7 +89,7 @@ def render_lobby():
     st.header("📚 現有跨校課程一覽")
     try:
         response = supabase.table("courses").select(
-            "id, title, start_time, max_students, max_schools, syllabus, plan_pdf_url, host_school_id, "
+            "id, title, course_type, credits, start_time, max_students, max_schools, syllabus, plan_pdf_url, host_school_id, "
             "sps_min, sps_max, req_1, req_2, req_3, "
             "schools(name, district, registrant_name, registrant_email, academic_director_email, principal_email)"
         ).execute()
@@ -107,17 +107,27 @@ def render_lobby():
             for m in all_matches_res.data:
                 matches_by_course.setdefault(m['course_id'], []).append(m)
 
+            COURSE_TYPES = ["部定必修", "加深加廣選修", "校訂必修", "多元選修", "彈性課程"]
             all_districts = sorted({c['schools'].get('district', '其他') for c in courses if c.get('schools')})
+
             col_f1, col_f2 = st.columns(2)
             with col_f1:
                 selected_district = st.selectbox("🗺️ 篩選開課學校分區", ["全部"] + all_districts)
             with col_f2:
                 time_keyword = st.text_input("🕐 搜尋時段關鍵字", placeholder="例：週三、14:00")
 
+            col_f3, col_f4 = st.columns(2)
+            with col_f3:
+                keyword = st.text_input("🔍 搜尋課程關鍵字", placeholder="例：半導體、程式設計")
+            with col_f4:
+                selected_types = st.multiselect("📚 篩選課程種類", COURSE_TYPES)
+
             filtered_courses = [
                 c for c in courses
                 if (selected_district == "全部" or c.get('schools', {}).get('district') == selected_district)
                 and (not time_keyword or time_keyword in (c.get('start_time') or ''))
+                and (not keyword or keyword in (c.get('title') or '') or keyword in (c.get('syllabus') or ''))
+                and (not selected_types or c.get('course_type') in selected_types)
             ]
             st.caption(f"共 {len(filtered_courses)} 門課程")
 
@@ -128,9 +138,14 @@ def render_lobby():
                 total_active = approved_count + pending_count
                 max_schools = c.get('max_schools', 2)
 
-                with st.expander(f"📖 {c['title']} - {c['schools']['name']}"):
+                type_tag = f"　`{c['course_type']}`" if c.get('course_type') else ""
+                with st.expander(f"📖 {c['title']}{type_tag} - {c['schools']['name']}"):
                     col1, col2 = st.columns(2)
                     with col1:
+                        if c.get('course_type'):
+                            st.write(f"**📚 課程種類：** {c['course_type']}")
+                        if c.get('credits') is not None and c['credits']:
+                            st.write(f"**🎯 學分數：** {c['credits']} 學分")
                         st.write(f"**🗓️ 開課時間：** {c.get('start_time', '未設定')}")
                         st.write(f"**👥 跨校學生上限：** {c.get('max_students', 'N/A')} 人")
                         if c.get('sps_min') or c.get('sps_max'):
