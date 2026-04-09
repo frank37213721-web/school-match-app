@@ -182,7 +182,7 @@ if choice == "課程大廳":
     try:
         # 精確欄位查詢，含學校分區
         response = supabase.table("courses").select(
-            "id, title, start_time, max_students, max_schools, syllabus, plan_pdf_url, "
+            "id, title, start_time, max_students, max_schools, syllabus, plan_pdf_url, host_school_id, "
             "schools(name, district, registrant_name, registrant_email, academic_director_email, principal_email)"
         ).execute()
         courses = response.data
@@ -239,10 +239,16 @@ if choice == "課程大廳":
                     if f"show_matching_{c['id']}" not in st.session_state:
                         st.session_state[f"show_matching_{c['id']}"] = False
 
-                    button_disabled = total_active >= max_schools
-                    button_text = "🚫 名額已滿" if button_disabled else "申請媒合"
+                    logged_in_school_id = st.session_state.school_info['id'] if st.session_state.get('logged_in') and st.session_state.get('school_info') else None
+                    is_own_course = logged_in_school_id is not None and c.get('host_school_id') == logged_in_school_id
 
-                    if st.button(button_text, key=f"btn_{c['id']}", disabled=button_disabled):
+                    if is_own_course:
+                        st.info("📌 此為您開設的課程，無法申請媒合。")
+                    else:
+                        button_disabled = total_active >= max_schools
+                        button_text = "🚫 名額已滿" if button_disabled else "申請媒合"
+
+                    if not is_own_course and st.button(button_text, key=f"btn_{c['id']}", disabled=button_disabled):
                         if not st.session_state.logged_in:
                             st.warning("⚠️ 老師請先登入後再進行媒合申請喔！")
                         else:
