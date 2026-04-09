@@ -110,7 +110,7 @@ if st.session_state.get("logged_in") and st.session_state.get("school_info"):
                         .execute()
                     has_slots = len(approved_res.data) < c.get('max_schools', 2)
                     slot_msg = "該課程目前仍有名額，您可以再次送出媒合申請。" if has_slots else "該課程目前已無剩餘名額。"
-                    st.warning(f"😔 **媒合申請通知**\n\n很遺憾，您對課程「**{c['title']}**」的媒合申請已被開課學校拒絕。{slot_msg}")
+                    st.warning(f"😔 **媒合申請通知**\n\n很遺憾，您對課程「**{c['title']}**」的媒合申請已被開課學校婉拒。{slot_msg}")
                     if st.button("知道了", key=f"dismiss_{rm['id']}"):
                         st.session_state.dismissed_rejections.add(rm['id'])
                         st.rerun()
@@ -905,7 +905,7 @@ elif choice == "配對情形":
                         partner_name = partner_info.get('name', '未知學校') if isinstance(partner_info, dict) else partner_info
                         status = m['status']
 
-                        status_label = {"pending": "⏳ 待審核", "approved": "✅ 媒合成功", "rejected": "❌ 已拒絕"}.get(status, status)
+                        status_label = {"pending": "⏳ 待審核", "approved": "✅ 媒合成功", "rejected": "😔 媒合被婉拒"}.get(status, status)
 
                         with st.container(border=True):
                             st.write(f"**{partner_name}** 申請了「{course_title}」　{status_label}")
@@ -947,9 +947,9 @@ elif choice == "配對情形":
                                                 send_email(
                                                     recipient_email, recipient_name,
                                                     f"媒合申請通知：「{course_title}」申請未獲通過",
-                                                    f"親愛的 {recipient_name}：\n\n很遺憾，{partner_name} 對課程「{course_title}」的媒合申請未獲開課學校「{school['name']}」核准。\n\n若該課程仍有名額，您的學校可以再次送出媒合申請。\n\n跨校課程媒合平台"
+                                                    f"親愛的 {recipient_name}：\n\n很遺憾，{partner_name} 對課程「{course_title}」的媒合申請已被開課學校「{school['name']}」婉拒。\n\n若該課程仍有名額，您的學校可以再次送出媒合申請。\n\n跨校課程媒合平台"
                                                 )
-                                        st.warning(f"已拒絕 {partner_name} 的申請，通知 Email 已發送。")
+                                        st.warning(f"已婉拒 {partner_name} 的申請，通知 Email 已發送。")
                                         st.rerun()
                 else:
                     st.write("目前尚無收到申請。")
@@ -986,11 +986,11 @@ elif choice == "配對情形":
                 for m in outgoing.data:
                     course = course_map.get(m['course_id'], {})
                     host_name = host_map.get(course.get('host_school_id'), '未知學校')
-                    status_label = {"pending": "⏳ 審核中", "approved": "🎉 媒合成功", "rejected": "❌ 已拒絕"}.get(m['status'], m['status'])
+                    status_label = {"pending": "⏳ 審核中", "approved": "🎉 媒合成功", "rejected": "😔 媒合被婉拒"}.get(m['status'], m['status'])
                     if m['status'] == 'approved':
                         st.success(f"🎉 **媒合成功**　您與 **{host_name}** 的「{course.get('title', '未知課程')}」合作已確認！")
                     elif m['status'] == 'rejected':
-                        st.error(f"❌ **已拒絕**　您向 **{host_name}** 申請的「{course.get('title', '未知課程')}」未獲通過。")
+                        st.warning(f"😔 **媒合被婉拒**　您向 **{host_name}** 申請的「{course.get('title', '未知課程')}」未獲通過。")
                     else:
                         st.info(f"⏳ **審核中**　您向 **{host_name}** 申請了「{course.get('title', '未知課程')}」，請等候回覆。")
             else:
