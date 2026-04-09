@@ -17,28 +17,48 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.school_info = None
 
-# ── 拒絕通知：僅對已登入的合作學校顯示 ──
+# ── 登入歡迎訊息 ──
 if st.session_state.get("logged_in") and st.session_state.get("school_info"):
     school = st.session_state.school_info
-    if 'dismissed_rejections' not in st.session_state:
-        st.session_state.dismissed_rejections = set()
+    st.sidebar.markdown(
+        f"**{school['name']}**  \n{school.get('registrant_name', '')} 承辦人，您好 👋",
+        unsafe_allow_html=False
+    )
+    st.sidebar.divider()
+
+# ── 配對回覆通知（答應 / 拒絕），登入後持續顯示直到按知道了 ──
+if st.session_state.get("logged_in") and st.session_state.get("school_info"):
+    school = st.session_state.school_info
+    if 'dismissed_notifications' not in st.session_state:
+        st.session_state.dismissed_notifications = set()
     try:
-        rejected_res = supabase.table("matches")\
-            .select("id, course_id")\
+        notif_res = supabase.table("matches")\
+            .select("id, status, course_id")\
             .eq("partner_school_id", school['id'])\
-            .eq("status", "rejected")\
+            .in_("status", ["approved", "rejected"])\
             .execute()
-        for rm in rejected_res.data:
-            if rm['id'] not in st.session_state.dismissed_rejections:
+        for m in notif_res.data:
+            if m['id'] not in st.session_state.dismissed_notifications:
                 course_res = supabase.table("courses")\
-                    .select("id, title, max_schools")\
-                    .eq("id", rm['course_id'])\
+                    .select("title, schools(name)")\
+                    .eq("id", m['course_id'])\
                     .execute()
                 if course_res.data:
                     c = course_res.data[0]
-                    st.warning(f"😔 **配對申請通知**\n\n很遺憾，您對課程「**{c['title']}**」的配對申請已被開課學校婉拒。")
-                    if st.button("知道了", key=f"dismiss_{rm['id']}"):
-                        st.session_state.dismissed_rejections.add(rm['id'])
+                    host_name = c['schools']['name'] if c.get('schools') else '開課學校'
+                    if m['status'] == 'approved':
+                        st.success(
+                            f"🎉 **配對申請通知**\n\n"
+                            f"恭喜！**{host_name}** 已答應您對課程「**{c['title']}**」的申請，合作正式成立！\n\n"
+                            f"📌 請盡快與對方聯繫，確認課程細節與行政事宜。"
+                        )
+                    else:
+                        st.warning(
+                            f"😔 **配對申請通知**\n\n"
+                            f"很遺憾，**{host_name}** 婉拒了您對課程「**{c['title']}**」的申請。"
+                        )
+                    if st.button("知道了", key=f"dismiss_notif_{m['id']}"):
+                        st.session_state.dismissed_notifications.add(m['id'])
                         st.rerun()
     except Exception:
         pass
