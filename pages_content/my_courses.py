@@ -3,8 +3,6 @@ import streamlit as st
 from utils import supabase, require_login
 
 COLUMN_NAMES = {
-    "id": "課程 ID",
-    "host_school_id": "開課學校 ID",
     "title": "課程名稱",
     "syllabus": "課程大綱",
     "plan_details": "課程計畫說明",
