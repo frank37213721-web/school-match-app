@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 import streamlit as st
 from utils import supabase, require_login, is_valid_email, send_email
 
