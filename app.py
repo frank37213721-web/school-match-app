@@ -122,7 +122,7 @@ h1, h2, h3 { color: #1a2a4a !important; }
 /* ── Selectbox trigger ── */
 [data-testid="stSelectbox"] > div > div,
 [data-baseweb="select"] {
-    background-color: #ffffff !important;
+    background-color: #dce6f5 !important;
     border: 1px solid #b0c4e0 !important;
     color: #1a2340 !important;
 }
@@ -133,32 +133,32 @@ h1, h2, h3 { color: #1a2a4a !important; }
 [data-baseweb="popover"],
 [data-baseweb="popover"] > div,
 [data-baseweb="popover"] > div > div {
-    background-color: #ffffff !important;
+    background-color: #dce6f5 !important;
     border: 1px solid #b0c4e0 !important;
     border-radius: 8px !important;
-    box-shadow: 0 4px 16px rgba(30,50,100,0.12) !important;
+    box-shadow: 0 4px 16px rgba(30,50,100,0.10) !important;
 }
 [data-baseweb="menu"] {
-    background-color: #ffffff !important;
+    background-color: #dce6f5 !important;
 }
 [data-baseweb="menu"] ul,
 [data-baseweb="menu"] li {
-    background-color: #ffffff !important;
+    background-color: #dce6f5 !important;
     color: #1a2340 !important;
 }
 /* role="listbox" 是實際選項容器 */
 [role="listbox"] {
-    background-color: #ffffff !important;
+    background-color: #dce6f5 !important;
     color: #1a2340 !important;
 }
 [role="option"],
 [role="option"] * {
-    background-color: #ffffff !important;
+    background-color: #dce6f5 !important;
     color: #1a2340 !important;
 }
 [role="option"]:hover,
 [role="option"][aria-selected="true"] {
-    background-color: #dce8f8 !important;
+    background-color: #c4d4ec !important;
 }
 
 /* ── 原生 <select>（Android WebView fallback） ── */
