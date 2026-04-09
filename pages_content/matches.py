@@ -44,16 +44,19 @@ def render_matches():
                         partner_name = partner_info.get('name', '未知學校') if isinstance(partner_info, dict) else partner_info
                         status = m['status']
 
-                        if status == "rejected":
+                        def _fmt_time(ts):
                             try:
-                                dt = datetime.fromisoformat(m['updated_at'].replace("Z", "+00:00"))
-                                dt_local = dt.astimezone()
-                                reject_time = dt_local.strftime("%Y/%m/%d %H:%M")
+                                dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                                return dt.astimezone().strftime("%Y/%m/%d %H:%M")
                             except Exception:
-                                reject_time = "不明時間"
-                            status_label = f"您已於 {reject_time} 婉拒該校的申請"
+                                return "不明時間"
+
+                        if status == "rejected":
+                            status_label = f"您已於 {_fmt_time(m['updated_at'])} 婉拒該校的申請"
+                        elif status == "approved":
+                            status_label = f"✅ 您已於 {_fmt_time(m['updated_at'])} 答應對方的申請"
                         else:
-                            status_label = {"pending": "⏳ 待審核", "approved": "✅ 配對成功"}.get(status, status)
+                            status_label = "⏳ 待審核"
 
                         with st.container(border=True):
                             st.write(f"**{partner_name}** 申請了「{course_title}」　{status_label}")
