@@ -1003,37 +1003,66 @@ elif choice == "學校帳號登入":
         # ── 1. 選擇學校名稱 ──
         st.write("### 1. 選擇學校名稱")
 
+        # 從 school_registry 載入（優先），fallback 至 hardcode
+        try:
+            _reg = supabase.table("school_registry").select("code,name,district").execute().data
+            _has_db = bool(_reg)
+        except Exception:
+            _reg = []
+            _has_db = False
+
+        # 整理為 {district: [name, ...]} 結構（只顯示已設分區的學校）
+        if _has_db:
+            _sd: dict = {}
+            for _e in _reg:
+                _d = (_e.get("district") or "").strip()
+                if _d:
+                    _sd.setdefault(_d, []).append(_e["name"])
+            schools_by_district = _sd if _sd else schools_by_district
+
         # 代碼快速帶入
-        code_input = st.text_input("輸入學校代碼（6碼英數字，可快速帶出學校）",
-                                   max_chars=6, placeholder="例：183314")
+        code_input = st.text_input("輸入學校代碼（快速帶出學校名稱）",
+                                   max_chars=10, placeholder="例：183314")
         code_input = code_input.strip().upper()
 
         auto_district = None
         auto_school = None
-        if len(code_input) == 6:
-            matched = SCHOOL_CODE_MAP.get(code_input)
-            if matched:
-                # 反查是否在可選清單中
-                for dist, school_list in schools_by_district.items():
-                    if matched in school_list:
-                        auto_district = dist
-                        auto_school = matched
-                        break
-                if auto_school:
-                    st.success(f"✅ 已找到：**{matched}**（{auto_district}）")
+        if code_input:
+            # 先查 school_registry DB
+            matched_entry = next((e for e in _reg if (e.get("code") or "").upper() == code_input), None)
+            if matched_entry:
+                matched_name = matched_entry["name"]
+                matched_dist = (matched_entry.get("district") or "").strip()
+                auto_school = matched_name
+                auto_district = matched_dist if matched_dist else None
+                if auto_district:
+                    st.success(f"✅ 已找到：**{matched_name}**（{matched_dist}）")
                 else:
-                    st.info(f"找到學校名稱：**{matched}**，請手動從下方選單選取。")
+                    st.info(f"找到學校：**{matched_name}**，此學校尚未設定分區，請手動選擇。")
             else:
-                st.error("找不到此代碼對應的學校，請確認代碼是否正確。")
+                # fallback: 查 SCHOOL_CODE_MAP
+                matched_name = SCHOOL_CODE_MAP.get(code_input)
+                if matched_name:
+                    auto_school = matched_name
+                    for dist, slist in schools_by_district.items():
+                        if matched_name in slist:
+                            auto_district = dist
+                            break
+                    if auto_district:
+                        st.success(f"✅ 已找到：**{matched_name}**（{auto_district}）")
+                    else:
+                        st.info(f"找到學校：**{matched_name}**，請手動從下方選單選取。")
+                else:
+                    st.error("找不到此代碼對應的學校，請確認代碼或直接從下方選單選取。")
 
         district_list = list(schools_by_district.keys())
-        district_idx = district_list.index(auto_district) if auto_district else 0
+        district_idx = district_list.index(auto_district) if auto_district and auto_district in district_list else 0
 
         col_d, col_s = st.columns(2)
         with col_d:
             selected_district = st.selectbox("選擇分區", district_list, index=district_idx)
         with col_s:
-            schools_in_district = schools_by_district[selected_district]
+            schools_in_district = schools_by_district.get(selected_district, [])
             school_idx = schools_in_district.index(auto_school) if auto_school and auto_school in schools_in_district else 0
             selected_school = st.selectbox("選擇學校", schools_in_district, index=school_idx)
 
@@ -1567,7 +1596,7 @@ elif choice == "📊 系統管理":
         "其他": ["新竹縣立竹北實驗高中"],
     }
 
-    tab1, tab2 = st.tabs(["🏫 學校帳號基本資訊", "🤝 配對狀況"])
+    tab1, tab2, tab3 = st.tabs(["🏫 學校帳號基本資訊", "🤝 配對狀況", "📋 學校清單管理"])
 
     # ── Tab 1：學校帳號基本資訊 ──
     with tab1:
@@ -1697,3 +1726,148 @@ elif choice == "📊 系統管理":
 
         except Exception as e:
             st.error(f"讀取配對資料失敗：{e}")
+
+    # ── Tab 3：學校清單管理 ──
+    with tab3:
+        st.subheader("📋 學校代碼與分區管理")
+        st.caption("此清單決定學校帳號申請頁面可選擇的學校。代碼欄位供學校申請時快速帶入學校名稱。")
+
+        try:
+            reg_res = supabase.table("school_registry").select("*").order("district").order("name").execute()
+            all_reg = reg_res.data
+        except Exception as e:
+            st.error(f"讀取學校清單失敗：{e}（請先至 Supabase 建立 school_registry 資料表）")
+            all_reg = []
+
+        # ── 一鍵匯入 ──
+        with st.expander("🔄 一鍵匯入（匯入所有教育部代碼 + 現有分區設定）"):
+            st.write("將會把下列資料匯入 school_registry：")
+            st.write(f"- 教育部代碼表：**{len(SCHOOL_CODE_MAP)} 筆**（代碼 + 學校名稱，分區留空）")
+            st.write(f"- 現有分區設定：**{sum(len(v) for v in ALL_SCHOOLS_BY_DISTRICT.values())} 筆**（學校名稱 + 分區，代碼留空）")
+            st.info("已存在的學校名稱不會重複匯入。")
+            if st.button("▶️ 開始匯入", type="primary", key="bulk_import"):
+                imported = 0
+                skipped = 0
+                existing_names = {r["name"] for r in all_reg}
+                existing_codes = {r.get("code") for r in all_reg if r.get("code")}
+
+                # 匯入代碼表
+                for code, name in SCHOOL_CODE_MAP.items():
+                    if name in existing_names or code in existing_codes:
+                        skipped += 1
+                        continue
+                    try:
+                        supabase.table("school_registry").insert({"code": code, "name": name, "district": ""}).execute()
+                        imported += 1
+                        existing_names.add(name)
+                        existing_codes.add(code)
+                    except Exception:
+                        skipped += 1
+
+                # 匯入分區設定（upsert by name）
+                for district, names in ALL_SCHOOLS_BY_DISTRICT.items():
+                    for name in names:
+                        # 如果已存在 → 更新 district；否則新增
+                        existing = next((r for r in all_reg if r["name"] == name), None)
+                        if existing:
+                            if not existing.get("district"):
+                                supabase.table("school_registry").update({"district": district}).eq("id", existing["id"]).execute()
+                        elif name not in existing_names:
+                            try:
+                                supabase.table("school_registry").insert({"name": name, "district": district}).execute()
+                                imported += 1
+                                existing_names.add(name)
+                            except Exception:
+                                skipped += 1
+
+                st.success(f"匯入完成：新增 {imported} 筆，略過 {skipped} 筆")
+                st.rerun()
+
+        if all_reg:
+            # ── 篩選 ──
+            all_districts_reg = sorted({r.get("district", "") for r in all_reg})
+            col_f1, col_f2 = st.columns([1, 3])
+            with col_f1:
+                dist_filter = st.selectbox("篩選分區", ["全部（含未分區）"] + [d for d in all_districts_reg if d] + (["（未分區）"] if "" in all_districts_reg else []), key="reg_dist_filter")
+            with col_f2:
+                name_filter = st.text_input("搜尋學校名稱", placeholder="輸入關鍵字...", key="reg_name_filter")
+
+            if dist_filter == "全部（含未分區）":
+                show_reg = all_reg
+            elif dist_filter == "（未分區）":
+                show_reg = [r for r in all_reg if not r.get("district")]
+            else:
+                show_reg = [r for r in all_reg if r.get("district") == dist_filter]
+            if name_filter:
+                show_reg = [r for r in show_reg if name_filter in r["name"]]
+
+            st.write(f"顯示 **{len(show_reg)}** 筆（共 {len(all_reg)} 筆）")
+
+            # ── 編輯中 ──
+            edit_id = st.session_state.get("reg_edit_id")
+
+            for r in show_reg:
+                if edit_id == r["id"]:
+                    with st.container():
+                        st.markdown("---")
+                        col_c, col_n, col_d, col_btn = st.columns([1.2, 2.5, 1.5, 1])
+                        with col_c:
+                            new_code = st.text_input("代碼", value=r.get("code") or "", max_chars=10, key=f"ec_{r['id']}")
+                        with col_n:
+                            new_name = st.text_input("學校名稱", value=r["name"], key=f"en_{r['id']}")
+                        with col_d:
+                            new_dist = st.text_input("分區", value=r.get("district") or "", key=f"ed_{r['id']}")
+                        with col_btn:
+                            st.markdown("<div style='height:1.8rem'></div>", unsafe_allow_html=True)
+                            if st.button("💾 儲存", key=f"save_{r['id']}"):
+                                supabase.table("school_registry").update({
+                                    "code": new_code.strip().upper() or None,
+                                    "name": new_name.strip(),
+                                    "district": new_dist.strip()
+                                }).eq("id", r["id"]).execute()
+                                st.session_state.reg_edit_id = None
+                                st.rerun()
+                            if st.button("✖ 取消", key=f"cancel_{r['id']}"):
+                                st.session_state.reg_edit_id = None
+                                st.rerun()
+                        st.markdown("---")
+                else:
+                    col_c, col_n, col_d, col_e, col_del = st.columns([1.2, 2.5, 1.5, 0.6, 0.6])
+                    col_c.text(r.get("code") or "—")
+                    col_n.text(r["name"])
+                    col_d.text(r.get("district") or "未分區")
+                    with col_e:
+                        if st.button("✏️", key=f"edit_{r['id']}", help="編輯"):
+                            st.session_state.reg_edit_id = r["id"]
+                            st.rerun()
+                    with col_del:
+                        if st.button("🗑️", key=f"dreg_{r['id']}", help="刪除"):
+                            supabase.table("school_registry").delete().eq("id", r["id"]).execute()
+                            st.rerun()
+        else:
+            st.info("學校清單為空，請點選上方「一鍵匯入」建立初始資料。")
+
+        # ── 新增單筆 ──
+        st.divider()
+        st.write("#### ➕ 新增學校")
+        col_a, col_b, col_c2 = st.columns([1.2, 2.5, 1.5])
+        with col_a:
+            add_code = st.text_input("代碼（選填）", max_chars=10, key="add_reg_code", placeholder="例：183314")
+        with col_b:
+            add_name = st.text_input("學校名稱", key="add_reg_name", placeholder="例：新竹市數位實驗高中")
+        with col_c2:
+            add_dist = st.text_input("分區", key="add_reg_dist", placeholder="例：北三區")
+        if st.button("新增", key="add_reg_btn"):
+            if add_name.strip():
+                try:
+                    supabase.table("school_registry").insert({
+                        "code": add_code.strip().upper() or None,
+                        "name": add_name.strip(),
+                        "district": add_dist.strip()
+                    }).execute()
+                    st.success(f"已新增：{add_name}")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"新增失敗：{e}")
+            else:
+                st.error("請輸入學校名稱")
