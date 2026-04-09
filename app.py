@@ -196,7 +196,7 @@ if choice == "課程大廳":
         # 精確欄位查詢，含學校分區
         response = supabase.table("courses").select(
             "id, title, start_time, max_students, max_schools, syllabus, plan_pdf_url, host_school_id, "
-            "students_per_school, req_1, req_2, req_3, "
+            "sps_min, sps_max, req_1, req_2, req_3, "
             "schools(name, district, registrant_name, registrant_email, academic_director_email, principal_email)"
         ).execute()
         courses = response.data
@@ -241,8 +241,8 @@ if choice == "課程大廳":
                     with col1:
                         st.write(f"**🗓️ 開課時間：** {c.get('start_time', '未設定')}")
                         st.write(f"**👥 跨校學生上限：** {c.get('max_students', 'N/A')} 人")
-                        if c.get('students_per_school'):
-                            st.write(f"**🎓 每校希望學生人數：** {c['students_per_school']} 人")
+                        if c.get('sps_min') or c.get('sps_max'):
+                            st.write(f"**🎓 每校希望學生人數：** {c.get('sps_min', '?')} ~ {c.get('sps_max', '?')} 人")
                     with col2:
                         st.write(f"**🏫 合作學校上限：** {max_schools} 所")
                         st.write(f"**📊 目前申請：** {total_active}/{max_schools} 所")
@@ -795,7 +795,12 @@ elif choice == "新增/修改課程":
                 c_time     = st.text_input("開課時間", placeholder="例：每週三 14:00-16:00")
                 c_students  = st.number_input("跨校學生人數上限", min_value=0, value=20)
                 c_schools   = st.number_input("跨校學校數目上限", min_value=0, value=2)
-                c_sps       = st.number_input("每校希望學生人數（選填，0 表示不限）", min_value=0, max_value=5, value=0)
+                st.write("**🎓 每校希望學生人數範圍（選填）**")
+                col_sps1, col_sps2 = st.columns(2)
+                with col_sps1:
+                    c_sps_min = st.number_input("最少人數", min_value=0, max_value=5, value=0, key="add_sps_min")
+                with col_sps2:
+                    c_sps_max = st.number_input("最多人數", min_value=0, max_value=5, value=0, key="add_sps_max")
                 c_pdf_file  = st.file_uploader("課程規劃表 PDF（2MB 以內）", type=["pdf"])
                 c_syllabus  = st.text_area("課程大綱／內容說明")
                 st.write("**📋 開課學校合作要求（選填，最多三點）**")
@@ -819,7 +824,8 @@ elif choice == "新增/修改課程":
                                     "start_time": c_time,
                                     "max_students": c_students,
                                     "max_schools": c_schools,
-                                    "students_per_school": c_sps if c_sps > 0 else None,
+                                    "sps_min": c_sps_min if c_sps_min > 0 else None,
+                                    "sps_max": c_sps_max if c_sps_max > 0 else None,
                                     "plan_pdf_url": pdf_url,
                                     "syllabus": c_syllabus,
                                     "req_1": c_req1 or None,
@@ -847,7 +853,12 @@ elif choice == "新增/修改課程":
                                 e_time     = st.text_input("開課時間", value=c.get('start_time', ''))
                                 e_students  = st.number_input("跨校學生人數上限", min_value=0, value=c.get('max_students', 20))
                                 e_schools   = st.number_input("跨校學校數目上限", min_value=0, value=c.get('max_schools', 2))
-                                e_sps       = st.number_input("每校希望學生人數（0 表示不限）", min_value=0, max_value=5, value=c.get('students_per_school') or 0)
+                                st.write("**🎓 每校希望學生人數範圍（選填）**")
+                                col_sps1, col_sps2 = st.columns(2)
+                                with col_sps1:
+                                    e_sps_min = st.number_input("最少人數", min_value=0, max_value=5, value=c.get('sps_min') or 0, key=f"sps_min_{c['id']}")
+                                with col_sps2:
+                                    e_sps_max = st.number_input("最多人數", min_value=0, max_value=5, value=c.get('sps_max') or 0, key=f"sps_max_{c['id']}")
                                 if c.get('plan_pdf_url'):
                                     st.markdown(f"📄 目前 PDF：[查看現有檔案]({c['plan_pdf_url']})")
                                 e_pdf_file  = st.file_uploader("更換課程規劃表 PDF（2MB 以內，不上傳則保留原檔）", type=["pdf"], key=f"pdf_{c['id']}")
@@ -874,7 +885,8 @@ elif choice == "新增/修改課程":
                                                     "start_time": e_time,
                                                     "max_students": e_students,
                                                     "max_schools": e_schools,
-                                                    "students_per_school": e_sps if e_sps > 0 else None,
+                                                    "sps_min": e_sps_min if e_sps_min > 0 else None,
+                                                    "sps_max": e_sps_max if e_sps_max > 0 else None,
                                                     "plan_pdf_url": new_pdf_url,
                                                     "syllabus": e_syllabus,
                                                     "req_1": e_req1 or None,
