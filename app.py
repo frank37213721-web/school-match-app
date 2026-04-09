@@ -547,12 +547,16 @@ else:
     # 加入「配對情形」和「學校基本資料」
     menu = ["課程大廳", "管理中心 (我的課程)", "配對情形", "學校基本資料", "新增/修改課程", "登出"]
 
-_default_index = 0
+# 強制跳轉至登入頁（首頁按鈕觸發）
 if st.session_state.get("force_login") and "學校帳號登入" in menu:
-    _default_index = menu.index("學校帳號登入")
+    st.session_state["sidebar_menu"] = "學校帳號登入"
     st.session_state.force_login = False
 
-choice = st.sidebar.selectbox("選單", menu, index=_default_index)
+# 若目前記憶的選項不在當前選單（例如登入/登出後選單改變），重設至第一項
+if st.session_state.get("sidebar_menu") not in menu:
+    st.session_state["sidebar_menu"] = menu[0]
+
+choice = st.sidebar.selectbox("選單", menu, key="sidebar_menu")
 
 # --- 登出邏輯 ---
 if choice == "登出":
