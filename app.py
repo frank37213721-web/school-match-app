@@ -93,6 +93,15 @@ supabase = create_client(url, key)
 
 st.set_page_config(page_title="跨校課程媒合平台", layout="wide")
 
+# --- 全域背景：淡藍灰漸層，與首頁同色調 ---
+st.markdown("""
+<style>
+.stApp {
+    background: linear-gradient(160deg, #1a1f2e 0%, #202840 55%, #1a1f30 100%) !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # 顯示登入狀態 - 在 Deploy 按鈕旁邊顯示
 if st.session_state.get("logged_in") and st.session_state.get("school_info"):
     school = st.session_state.school_info
@@ -205,7 +214,7 @@ if choice == "課程大廳":
         /* 隱藏 Streamlit 預設 UI */
         #MainMenu, footer, header { visibility: hidden; }
         [data-testid="stSidebar"] { display: none; }
-        .stApp { background: linear-gradient(160deg, #0d0d12 0%, #131824 55%, #0e1018 100%) !important; }
+        .stApp { background: linear-gradient(160deg, #10141f 0%, #172035 55%, #10141f 100%) !important; }
         .block-container { padding: 0 !important; max-width: 100% !important; }
 
         /* Hero — 置中但不撐滿全頁，讓按鈕緊跟在下方 */
