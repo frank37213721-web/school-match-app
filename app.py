@@ -216,15 +216,19 @@ section[data-testid="stSidebar"] > div,
 .stButton > button[kind="primary"] {
     background-color: #2563a8 !important;
     border-color: #2563a8 !important;
-    color: #e8f4ff !important;
+    color: #ffffff !important;
     font-weight: 600 !important;
     letter-spacing: 0.02em !important;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.25) !important;
+}
+[data-testid="baseButton-primary"] p,
+[data-testid="baseButton-primary"] span,
+.stButton > button[kind="primary"] p,
+.stButton > button[kind="primary"] span {
+    color: #ffffff !important;
 }
 [data-testid="baseButton-primary"]:hover,
 .stButton > button[kind="primary"]:hover {
     background-color: #1e50a0 !important;
-    color: #ffffff !important;
 }
 
 /* ── Tabs ── */
@@ -436,10 +440,13 @@ if choice == "課程大廳":
             background: rgba(245,245,247,0.2);
             margin: 0 auto 2rem;
         }
-        /* 首頁按鈕強制白字 */
-        .stButton > button,
-        [data-testid="baseButton-secondary"],
-        [data-testid="baseButton-primary"] {
+        /* 首頁按鈕強制白字（高 specificity 覆蓋全域規則） */
+        .stApp .stButton > button,
+        .stApp [data-testid="baseButton-secondary"],
+        .stApp [data-testid="baseButton-primary"],
+        .stApp .stButton > button span,
+        .stApp [data-testid="baseButton-secondary"] span,
+        .stApp [data-testid="baseButton-primary"] span {
             color: #ffffff !important;
             font-weight: 600 !important;
             letter-spacing: 0.02em !important;
