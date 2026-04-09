@@ -208,15 +208,16 @@ if choice == "課程大廳":
         .stApp { background: linear-gradient(160deg, #0d0d12 0%, #131824 55%, #0e1018 100%) !important; }
         .block-container { padding: 0 !important; max-width: 100% !important; }
 
-        /* 全版 Hero */
+        /* Hero — 置中但不撐滿全頁，讓按鈕緊跟在下方 */
         .hero {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            min-height: 88vh;
             text-align: center;
-            padding: 2rem 1rem;
+            padding-top: 18vh;
+            padding-bottom: 2rem;
+            padding-left: 1rem;
+            padding-right: 1rem;
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
         }
         .hero-eyebrow {
@@ -240,28 +241,16 @@ if choice == "課程大廳":
             font-weight: 300;
             color: rgba(245,245,247,0.55);
             letter-spacing: 0.01em;
-            margin-bottom: 3rem;
-        }
-        /* 登入連結右上 */
-        .top-login {
-            position: fixed;
-            top: 1.2rem;
-            right: 2rem;
-            z-index: 9999;
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: 0.9rem;
-            color: rgba(245,245,247,0.75);
+            margin-bottom: 0;
         }
         /* 分隔線 */
         .hero-divider {
             width: 60px;
             height: 1px;
             background: rgba(245,245,247,0.2);
-            margin: 0 auto 2.5rem;
+            margin: 0 auto 2rem;
         }
         </style>
-
-        <div class="top-login">🔑 請由左側選單登入</div>
 
         <div class="hero">
             <div class="hero-eyebrow">教育 × 合作 × 創新</div>
@@ -277,7 +266,7 @@ if choice == "課程大廳":
                 st.session_state.entered_lobby = True
                 st.session_state.force_login = True
                 st.rerun()
-            st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
             if st.button("進入課程大廳 →", use_container_width=True, type="primary"):
                 st.session_state.entered_lobby = True
                 st.rerun()
