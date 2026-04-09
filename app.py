@@ -930,7 +930,7 @@ elif choice == "配對情形":
                                                     send_email(
                                                         recipient_email, recipient_name,
                                                         f"媒合成功通知：您的課程申請「{course_title}」已被核准",
-                                                        f"親愛的 {recipient_name}：\n\n恭喜！{partner_name} 對課程「{course_title}」的媒合申請已獲得開課學校「{school['name']}」正式核准，雙方合作正式成立。\n\n請與開課學校聯繫後續合作事宜。\n\n跨校課程媒合平台"
+                                                        f"親愛的 {recipient_name}：\n\n恭喜！{partner_name} 對課程「{course_title}」的媒合申請已獲得開課學校「{school['name']}」正式核准，雙方合作正式成立。\n\n【開課學校聯絡資訊】\n- 承辦人姓名：{school.get('registrant_name', '未提供')}\n- 承辦人 Email：{school.get('registrant_email', '未提供')}\n- 承辦處室主任 Email：{school.get('academic_director_email', '未提供')}\n- 學校電話：{school.get('phone', '未提供')}\n- 承辦人分機：{school.get('registrant_extension', '未提供')}\n\n請盡快與開課學校聯繫，確認後續合作細節。\n\n跨校課程媒合平台"
                                                     )
                                             st.success(f"已確認與 {partner_name} 正式合作，通知 Email 已發送！")
                                             st.rerun()
