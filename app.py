@@ -204,13 +204,20 @@ section[data-testid="stSidebar"] > div,
     background-color: #c8d8f0 !important;
     border-color: #7a9cc8 !important;
 }
+/* Primary button — 用 data-testid 確保手機/桌機都生效 */
+[data-testid="baseButton-primary"],
 .stButton > button[kind="primary"] {
     background-color: #2563a8 !important;
     border-color: #2563a8 !important;
-    color: #ffffff !important;
+    color: #e8f4ff !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.25) !important;
 }
+[data-testid="baseButton-primary"]:hover,
 .stButton > button[kind="primary"]:hover {
     background-color: #1e50a0 !important;
+    color: #ffffff !important;
 }
 
 /* ── Tabs ── */
