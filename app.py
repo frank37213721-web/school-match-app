@@ -30,7 +30,7 @@ def upload_pdf(uploaded_file, school_id) -> str | None:
     if len(file_bytes) > MAX_PDF_BYTES:
         st.error("檔案超過 2MB 上限，請壓縮後再上傳。")
         return None
-    path = f"{school_id}/{int(time.time())}_{uploaded_file.name}"
+    path = f"{school_id}/{int(time.time())}.pdf"
     try:
         supabase.storage.from_(PDF_BUCKET).upload(
             path, file_bytes, {"content-type": "application/pdf"}
