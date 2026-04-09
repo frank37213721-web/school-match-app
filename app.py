@@ -20,6 +20,26 @@ def hash_password(raw_password: str) -> str:
 def verify_password(raw_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(raw_password, hashed_password)
 
+PDF_BUCKET = "course-pdfs"
+MAX_PDF_BYTES = 2 * 1024 * 1024  # 2 MB
+
+def upload_pdf(uploaded_file, school_id) -> str | None:
+    """上傳 PDF 至 Supabase Storage，回傳公開 URL；失敗時回傳 None。"""
+    import time
+    file_bytes = uploaded_file.read()
+    if len(file_bytes) > MAX_PDF_BYTES:
+        st.error("檔案超過 2MB 上限，請壓縮後再上傳。")
+        return None
+    path = f"{school_id}/{int(time.time())}_{uploaded_file.name}"
+    try:
+        supabase.storage.from_(PDF_BUCKET).upload(
+            path, file_bytes, {"content-type": "application/pdf"}
+        )
+        return supabase.storage.from_(PDF_BUCKET).get_public_url(path)
+    except Exception as e:
+        st.error(f"PDF 上傳失敗：{e}")
+        return None
+
 # 連鎖刪除函數
 def delete_course_cascade(course_id):
     """刪除課程前，先刪除所有關聯的 matches，避免 FK 報錯"""
@@ -767,27 +787,33 @@ elif choice == "新增/修改課程":
             with st.form("course_form_add"):
                 c_title    = st.text_input("課程名稱")
                 c_time     = st.text_input("開課時間", placeholder="例：每週三 14:00-16:00")
-                c_students = st.number_input("跨校學生人數上限", min_value=0, value=20)
-                c_schools  = st.number_input("跨校學校數目上限", min_value=0, value=2)
-                c_pdf      = st.text_input("課程規劃表 PDF 連結")
-                c_syllabus = st.text_area("課程大綱／內容說明")
+                c_students  = st.number_input("跨校學生人數上限", min_value=0, value=20)
+                c_schools   = st.number_input("跨校學校數目上限", min_value=0, value=2)
+                c_pdf_file  = st.file_uploader("課程規劃表 PDF（2MB 以內）", type=["pdf"])
+                c_syllabus  = st.text_area("課程大綱／內容說明")
                 if st.form_submit_button("確認新增課程"):
                     if not c_title:
                         st.error("請填寫課程名稱。")
                     else:
-                        try:
-                            supabase.table("courses").insert({
-                                "host_school_id": school['id'],
-                                "title": c_title,
-                                "start_time": c_time,
-                                "max_students": c_students,
-                                "max_schools": c_schools,
-                                "plan_pdf_url": c_pdf,
-                                "syllabus": c_syllabus,
-                            }).execute()
-                            st.success("🎉 課程新增成功！已同步顯示於課程大廳。")
-                        except Exception as e:
-                            st.error(f"新增失敗：{e}")
+                        pdf_url = ""
+                        if c_pdf_file:
+                            pdf_url = upload_pdf(c_pdf_file, school['id']) or ""
+                        if c_pdf_file and not pdf_url:
+                            pass  # upload_pdf 已顯示錯誤，停止
+                        else:
+                            try:
+                                supabase.table("courses").insert({
+                                    "host_school_id": school['id'],
+                                    "title": c_title,
+                                    "start_time": c_time,
+                                    "max_students": c_students,
+                                    "max_schools": c_schools,
+                                    "plan_pdf_url": pdf_url,
+                                    "syllabus": c_syllabus,
+                                }).execute()
+                                st.success("🎉 課程新增成功！已同步顯示於課程大廳。")
+                            except Exception as e:
+                                st.error(f"新增失敗：{e}")
 
         # ── 修改／刪除課程 ──
         with tab_edit:
@@ -804,23 +830,31 @@ elif choice == "新增/修改課程":
                             with st.form(f"edit_form_{c['id']}"):
                                 e_title    = st.text_input("課程名稱", value=c['title'])
                                 e_time     = st.text_input("開課時間", value=c.get('start_time', ''))
-                                e_students = st.number_input("跨校學生人數上限", min_value=0, value=c.get('max_students', 20))
-                                e_schools  = st.number_input("跨校學校數目上限", min_value=0, value=c.get('max_schools', 2))
-                                e_pdf      = st.text_input("課程規劃表 PDF 連結", value=c.get('plan_pdf_url', '') or '')
-                                e_syllabus = st.text_area("課程大綱／內容說明", value=c.get('syllabus', '') or '')
+                                e_students  = st.number_input("跨校學生人數上限", min_value=0, value=c.get('max_students', 20))
+                                e_schools   = st.number_input("跨校學校數目上限", min_value=0, value=c.get('max_schools', 2))
+                                if c.get('plan_pdf_url'):
+                                    st.markdown(f"📄 目前 PDF：[查看現有檔案]({c['plan_pdf_url']})")
+                                e_pdf_file  = st.file_uploader("更換課程規劃表 PDF（2MB 以內，不上傳則保留原檔）", type=["pdf"], key=f"pdf_{c['id']}")
+                                e_syllabus  = st.text_area("課程大綱／內容說明", value=c.get('syllabus', '') or '')
                                 col_save, col_del = st.columns(2)
                                 with col_save:
                                     if st.form_submit_button("💾 儲存修改"):
                                         if not e_title:
                                             st.error("課程名稱不得為空。")
                                         else:
+                                            new_pdf_url = c.get('plan_pdf_url', '') or ''
+                                            if e_pdf_file:
+                                                uploaded = upload_pdf(e_pdf_file, school['id'])
+                                                if not uploaded:
+                                                    st.stop()
+                                                new_pdf_url = uploaded
                                             try:
                                                 supabase.table("courses").update({
                                                     "title": e_title,
                                                     "start_time": e_time,
                                                     "max_students": e_students,
                                                     "max_schools": e_schools,
-                                                    "plan_pdf_url": e_pdf,
+                                                    "plan_pdf_url": new_pdf_url,
                                                     "syllabus": e_syllabus,
                                                 }).eq("id", c['id']).execute()
                                                 st.success("✅ 修改已儲存！")
