@@ -180,7 +180,12 @@ else:
     # 加入「配對情形」和「學校基本資料」
     menu = ["課程大廳", "管理中心 (我的課程)", "配對情形", "學校基本資料", "新增/修改課程", "登出"]
 
-choice = st.sidebar.selectbox("選單", menu)
+_default_index = 0
+if st.session_state.get("force_login") and "學校帳號登入" in menu:
+    _default_index = menu.index("學校帳號登入")
+    st.session_state.force_login = False
+
+choice = st.sidebar.selectbox("選單", menu, index=_default_index)
 
 # --- 登出邏輯 ---
 if choice == "登出":
@@ -200,7 +205,7 @@ if choice == "課程大廳":
         /* 隱藏 Streamlit 預設 UI */
         #MainMenu, footer, header { visibility: hidden; }
         [data-testid="stSidebar"] { display: none; }
-        .stApp { background: #000 !important; }
+        .stApp { background: linear-gradient(160deg, #0d0d12 0%, #131824 55%, #0e1018 100%) !important; }
         .block-container { padding: 0 !important; max-width: 100% !important; }
 
         /* 全版 Hero */
@@ -268,6 +273,11 @@ if choice == "課程大廳":
 
         col1, col2, col3 = st.columns([2, 1, 2])
         with col2:
+            if st.button("學校帳號 Sign in / Sign Up", use_container_width=True):
+                st.session_state.entered_lobby = True
+                st.session_state.force_login = True
+                st.rerun()
+            st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
             if st.button("進入課程大廳 →", use_container_width=True, type="primary"):
                 st.session_state.entered_lobby = True
                 st.rerun()
