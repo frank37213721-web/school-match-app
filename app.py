@@ -119,17 +119,51 @@ h1, h2, h3 { color: #1a2a4a !important; }
 [data-testid="stSidebar"] * { color: #1a2a4a !important; }
 [data-testid="stSidebar"] label { color: #2a3a60 !important; font-weight: 500 !important; }
 
-/* ── Selectbox / dropdown ── */
+/* ── Selectbox / dropdown（桌機 BaseWeb） ── */
 [data-testid="stSelectbox"] > div > div {
     background-color: #ffffff !important;
     border: 1px solid #b0c4e0 !important;
     color: #1a2340 !important;
 }
-[data-baseweb="select"] * { color: #1a2340 !important; }
+[data-baseweb="select"] { background-color: #ffffff !important; }
+[data-baseweb="select"] * { color: #1a2340 !important; background-color: transparent !important; }
+[data-baseweb="select"] [data-baseweb="icon"] svg { fill: #1a2340 !important; }
 [data-baseweb="popover"] { background-color: #ffffff !important; }
-[data-baseweb="menu"] { background-color: #ffffff !important; }
-[data-baseweb="option"] { color: #1a2340 !important; }
+[data-baseweb="menu"] { background-color: #ffffff !important; color: #1a2340 !important; }
+[data-baseweb="option"] { background-color: #ffffff !important; color: #1a2340 !important; }
 [data-baseweb="option"]:hover { background-color: #dce8f8 !important; }
+
+/* ── 原生 <select>（手機瀏覽器 fallback） ── */
+select {
+    background-color: #ffffff !important;
+    color: #1a2340 !important;
+    border: 1px solid #b0c4e0 !important;
+    border-radius: 6px !important;
+}
+select option {
+    background-color: #ffffff !important;
+    color: #1a2340 !important;
+}
+
+/* ── 手機版 sidebar overlay ── */
+[data-testid="stSidebarNav"],
+[data-testid="collapsedControl"],
+section[data-testid="stSidebar"] > div {
+    background: linear-gradient(180deg, #dce6f5 0%, #d0dcf0 100%) !important;
+}
+/* 手機版 sidebar 內所有 select 相關 */
+[data-testid="stSidebar"] select {
+    background-color: #ffffff !important;
+    color: #1a2340 !important;
+    border: 1px solid #b0c4e0 !important;
+}
+[data-testid="stSidebar"] [data-baseweb="select"] {
+    background-color: #ffffff !important;
+}
+[data-testid="stSidebar"] [data-baseweb="select"] * {
+    color: #1a2340 !important;
+    background-color: transparent !important;
+}
 
 /* ── Text input / textarea ── */
 [data-baseweb="input"] input,
