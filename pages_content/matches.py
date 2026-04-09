@@ -3,6 +3,14 @@ import streamlit as st
 from utils import supabase, require_login, is_valid_email, send_email
 
 
+def _fmt_time(ts):
+    try:
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        return dt.astimezone().strftime("%Y/%m/%d %H:%M")
+    except Exception:
+        return "不明時間"
+
+
 def render_matches():
     require_login()
     st.header("🤝 課程配對進度追蹤")
@@ -43,13 +51,6 @@ def render_matches():
                         partner_info = partner_map.get(m['partner_school_id'], {})
                         partner_name = partner_info.get('name', '未知學校') if isinstance(partner_info, dict) else partner_info
                         status = m['status']
-
-                        def _fmt_time(ts):
-                            try:
-                                dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-                                return dt.astimezone().strftime("%Y/%m/%d %H:%M")
-                            except Exception:
-                                return "不明時間"
 
                         if status == "rejected":
                             status_label = f"您已於 {_fmt_time(m['updated_at'])} 婉拒該校的申請"
@@ -111,7 +112,7 @@ def render_matches():
         st.subheader("📤 已寄出的配對請求")
         try:
             outgoing = supabase.table("matches")\
-                .select("id, status, course_id")\
+                .select("id, status, course_id, updated_at")\
                 .eq("partner_school_id", school['id'])\
                 .execute()
 
@@ -133,12 +134,14 @@ def render_matches():
                 for m in outgoing.data:
                     course = course_map.get(m['course_id'], {})
                     host_name = host_map.get(course.get('host_school_id'), '未知學校')
+                    course_title = course.get('title', '未知課程')
+                    ts = _fmt_time(m.get('updated_at', ''))
                     if m['status'] == 'approved':
-                        st.success(f"🎉 **配對成功**　您與 **{host_name}** 的「{course.get('title', '未知課程')}」合作已確認！")
+                        st.success(f"🎉 **配對成功**　**{host_name}** 已於 {ts} 答應您對「{course_title}」的申請，合作正式成立！")
                     elif m['status'] == 'rejected':
-                        st.warning(f"😔 **配對被婉拒**　您向 **{host_name}** 申請的「{course.get('title', '未知課程')}」未獲通過。")
+                        st.warning(f"😔 **申請未獲通過**　**{host_name}** 已於 {ts} 婉拒您對「{course_title}」的申請。")
                     else:
-                        st.info(f"⏳ **審核中**　您向 **{host_name}** 申請了「{course.get('title', '未知課程')}」，請等候回覆。")
+                        st.info(f"⏳ **審核中**　您向 **{host_name}** 申請了「{course_title}」，已於 {ts} 送出，請等候回覆。")
             else:
                 st.write("您尚未申請任何課程。")
         except Exception as e:
