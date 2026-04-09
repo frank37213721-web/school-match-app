@@ -196,6 +196,7 @@ if choice == "課程大廳":
         # 精確欄位查詢，含學校分區
         response = supabase.table("courses").select(
             "id, title, start_time, max_students, max_schools, syllabus, plan_pdf_url, host_school_id, "
+            "students_per_school, req_1, req_2, req_3, "
             "schools(name, district, registrant_name, registrant_email, academic_director_email, principal_email)"
         ).execute()
         courses = response.data
@@ -240,6 +241,8 @@ if choice == "課程大廳":
                     with col1:
                         st.write(f"**🗓️ 開課時間：** {c.get('start_time', '未設定')}")
                         st.write(f"**👥 跨校學生上限：** {c.get('max_students', 'N/A')} 人")
+                        if c.get('students_per_school'):
+                            st.write(f"**🎓 每校希望學生人數：** {c['students_per_school']} 人")
                     with col2:
                         st.write(f"**🏫 合作學校上限：** {max_schools} 所")
                         st.write(f"**📊 目前申請：** {total_active}/{max_schools} 所")
@@ -275,9 +278,12 @@ if choice == "課程大廳":
                             "確認授課時間段是否可以配合",
                             "確認是否課程計劃未來是否可以新增課程",
                             "確認合作學校端所準備之設備與環境是否可以安排妥當",
-                            "開課學校希望要求確認事項I、II、III",
-                            "未來如媒合成功基於誠信原則請與開課學校建立良好夥伴關係"
+                            "未來如媒合成功基於誠信原則請與開課學校建立良好夥伴關係",
                         ]
+                        for req_key in ["req_1", "req_2", "req_3"]:
+                            req_val = c.get(req_key, "")
+                            if req_val:
+                                confirm_items.append(f"【開課學校要求】{req_val}")
                         all_confirmed = True
                         for i, item in enumerate(confirm_items, 1):
                             if not st.checkbox(f"{i}. {item}", key=f"confirm_{c['id']}_{i}"):
@@ -789,8 +795,13 @@ elif choice == "新增/修改課程":
                 c_time     = st.text_input("開課時間", placeholder="例：每週三 14:00-16:00")
                 c_students  = st.number_input("跨校學生人數上限", min_value=0, value=20)
                 c_schools   = st.number_input("跨校學校數目上限", min_value=0, value=2)
+                c_sps       = st.number_input("每校希望學生人數（選填，0 表示不限）", min_value=0, max_value=5, value=0)
                 c_pdf_file  = st.file_uploader("課程規劃表 PDF（2MB 以內）", type=["pdf"])
                 c_syllabus  = st.text_area("課程大綱／內容說明")
+                st.write("**📋 開課學校合作要求（選填，最多三點）**")
+                c_req1 = st.text_input("要求一", placeholder="例：合作學校需自備視訊設備")
+                c_req2 = st.text_input("要求二")
+                c_req3 = st.text_input("要求三")
                 if st.form_submit_button("確認新增課程"):
                     if not c_title:
                         st.error("請填寫課程名稱。")
@@ -808,8 +819,12 @@ elif choice == "新增/修改課程":
                                     "start_time": c_time,
                                     "max_students": c_students,
                                     "max_schools": c_schools,
+                                    "students_per_school": c_sps if c_sps > 0 else None,
                                     "plan_pdf_url": pdf_url,
                                     "syllabus": c_syllabus,
+                                    "req_1": c_req1 or None,
+                                    "req_2": c_req2 or None,
+                                    "req_3": c_req3 or None,
                                 }).execute()
                                 st.success("🎉 課程新增成功！已同步顯示於課程大廳。")
                             except Exception as e:
@@ -832,10 +847,15 @@ elif choice == "新增/修改課程":
                                 e_time     = st.text_input("開課時間", value=c.get('start_time', ''))
                                 e_students  = st.number_input("跨校學生人數上限", min_value=0, value=c.get('max_students', 20))
                                 e_schools   = st.number_input("跨校學校數目上限", min_value=0, value=c.get('max_schools', 2))
+                                e_sps       = st.number_input("每校希望學生人數（0 表示不限）", min_value=0, max_value=5, value=c.get('students_per_school') or 0)
                                 if c.get('plan_pdf_url'):
                                     st.markdown(f"📄 目前 PDF：[查看現有檔案]({c['plan_pdf_url']})")
                                 e_pdf_file  = st.file_uploader("更換課程規劃表 PDF（2MB 以內，不上傳則保留原檔）", type=["pdf"], key=f"pdf_{c['id']}")
                                 e_syllabus  = st.text_area("課程大綱／內容說明", value=c.get('syllabus', '') or '')
+                                st.write("**📋 開課學校合作要求（選填）**")
+                                e_req1 = st.text_input("要求一", value=c.get('req_1', '') or '', key=f"req1_{c['id']}")
+                                e_req2 = st.text_input("要求二", value=c.get('req_2', '') or '', key=f"req2_{c['id']}")
+                                e_req3 = st.text_input("要求三", value=c.get('req_3', '') or '', key=f"req3_{c['id']}")
                                 col_save, col_del = st.columns(2)
                                 with col_save:
                                     if st.form_submit_button("💾 儲存修改"):
@@ -854,8 +874,12 @@ elif choice == "新增/修改課程":
                                                     "start_time": e_time,
                                                     "max_students": e_students,
                                                     "max_schools": e_schools,
+                                                    "students_per_school": e_sps if e_sps > 0 else None,
                                                     "plan_pdf_url": new_pdf_url,
                                                     "syllabus": e_syllabus,
+                                                    "req_1": e_req1 or None,
+                                                    "req_2": e_req2 or None,
+                                                    "req_3": e_req3 or None,
                                                 }).eq("id", c['id']).execute()
                                                 st.success("✅ 修改已儲存！")
                                                 st.rerun()
