@@ -138,6 +138,7 @@ def render_matches():
                     ts = _fmt_time(m.get('updated_at', ''))
                     if m['status'] == 'approved':
                         st.success(f"🎉 **配對成功**　**{host_name}** 已於 {ts} 答應您對「{course_title}」的申請，合作正式成立！")
+                        st.caption("📌 接下來請雙方進行實際聯繫，確認課程細節與行政事宜，祝學生都能學習順利！")
                     elif m['status'] == 'rejected':
                         st.warning(f"😔 **申請未獲通過**　**{host_name}** 已於 {ts} 婉拒您對「{course_title}」的申請。")
                     else:
