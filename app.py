@@ -151,14 +151,21 @@ h1, h2, h3 { color: #1a2a4a !important; }
     background-color: #dce6f5 !important;
     color: #1a2340 !important;
 }
-[role="option"],
-[role="option"] * {
+[role="option"] {
     background-color: #dce6f5 !important;
     color: #1a2340 !important;
 }
-[role="option"]:hover,
-[role="option"][aria-selected="true"] {
+[role="option"] * {
+    background-color: transparent !important;
+    color: #1a2340 !important;
+}
+[role="option"]:hover {
     background-color: #c4d4ec !important;
+}
+[role="option"][aria-selected="true"] {
+    background-color: #dce6f5 !important;
+    color: #1a2340 !important;
+    font-weight: 600 !important;
 }
 
 /* ── 原生 <select>（Android WebView fallback） ── */
@@ -428,6 +435,14 @@ if choice == "課程大廳":
             height: 1px;
             background: rgba(245,245,247,0.2);
             margin: 0 auto 2rem;
+        }
+        /* 首頁按鈕強制白字 */
+        .stButton > button,
+        [data-testid="baseButton-secondary"],
+        [data-testid="baseButton-primary"] {
+            color: #ffffff !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.02em !important;
         }
         </style>
 
