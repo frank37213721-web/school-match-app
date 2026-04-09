@@ -195,5 +195,58 @@ hr { border-color: #b0c4e0 !important; }
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #dce6f5; }
 ::-webkit-scrollbar-thumb { background: #90b0d8; border-radius: 3px; }
+
+/* ── 課程大廳卡片深色主題 ── */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: linear-gradient(140deg, #1c2d52 0%, #111e38 100%) !important;
+    border: 1px solid rgba(90,130,210,0.35) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 6px 24px rgba(8,16,40,0.4) !important;
+    overflow: hidden !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"] > div {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"] p,
+div[data-testid="stVerticalBlockBorderWrapper"] span,
+div[data-testid="stVerticalBlockBorderWrapper"] li {
+    color: #cddcf5 !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"] strong {
+    color: #f0f6ff !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stCaptionContainer"] p {
+    color: #7a9cc8 !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"] code {
+    background: rgba(80,140,255,0.15) !important;
+    color: #80b8ff !important;
+    border: 1px solid rgba(80,140,255,0.28) !important;
+    border-radius: 4px !important;
+    font-size: 0.82em !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"] .stButton > button {
+    background: rgba(255,255,255,0.09) !important;
+    color: #cddcf5 !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"] .stButton > button:hover {
+    background: rgba(255,255,255,0.17) !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="baseButton-primary"] {
+    background: #2563a8 !important;
+    border-color: #2563a8 !important;
+    color: #ffffff !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"] hr {
+    border-color: rgba(255,255,255,0.1) !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"] .stCheckbox label p,
+div[data-testid="stVerticalBlockBorderWrapper"] label {
+    color: #cddcf5 !important;
+}
 </style>
 """
