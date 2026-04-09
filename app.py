@@ -93,12 +93,143 @@ supabase = create_client(url, key)
 
 st.set_page_config(page_title="跨校課程媒合平台", layout="wide")
 
-# --- 全域背景：淡藍灰漸層，與首頁同色調 ---
+# --- 全域深海藍主題 ---
 st.markdown("""
 <style>
+/* ── 背景 ── */
 .stApp {
     background: linear-gradient(160deg, #1a1f2e 0%, #202840 55%, #1a1f30 100%) !important;
 }
+
+/* ── 主文字 ── */
+html, body, [class*="css"], .stMarkdown, .stText, p, li, label,
+h1, h2, h3, h4, h5, h6,
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] li {
+    color: #e8eaf0 !important;
+}
+
+/* ── 標題 ── */
+h1, h2, h3 { color: #c8d8f0 !important; }
+
+/* ── 側邊欄 ── */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #141928 0%, #1c2338 100%) !important;
+}
+[data-testid="stSidebar"] * { color: #c8d4e8 !important; }
+[data-testid="stSidebar"] .stSelectbox label { color: #8fa8cc !important; }
+
+/* ── Selectbox / dropdown ── */
+[data-testid="stSelectbox"] > div > div {
+    background-color: #1e2538 !important;
+    border: 1px solid #2e3a54 !important;
+    color: #e0e8f4 !important;
+}
+[data-baseweb="select"] * { color: #e0e8f4 !important; }
+[data-baseweb="popover"] { background-color: #1e2538 !important; }
+[data-baseweb="menu"] { background-color: #1e2538 !important; }
+[data-baseweb="option"]:hover { background-color: #2a3550 !important; }
+
+/* ── Text input / textarea ── */
+[data-baseweb="input"] input,
+[data-baseweb="textarea"] textarea,
+.stTextInput input,
+.stTextArea textarea,
+.stNumberInput input {
+    background-color: #1e2538 !important;
+    border: 1px solid #2e3a54 !important;
+    color: #e0e8f4 !important;
+    border-radius: 6px !important;
+}
+.stTextInput input::placeholder,
+.stTextArea textarea::placeholder { color: #5a7090 !important; }
+
+/* ── Buttons ── */
+.stButton > button {
+    background-color: #2a3a5c !important;
+    color: #d0e4ff !important;
+    border: 1px solid #3a4f78 !important;
+    border-radius: 8px !important;
+}
+.stButton > button:hover {
+    background-color: #344870 !important;
+    border-color: #4a6090 !important;
+}
+.stButton > button[kind="primary"] {
+    background-color: #2563a8 !important;
+    border-color: #2563a8 !important;
+    color: #ffffff !important;
+}
+.stButton > button[kind="primary"]:hover {
+    background-color: #1e50a0 !important;
+}
+
+/* ── Tabs ── */
+[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    background-color: transparent !important;
+    border-bottom: 1px solid #2e3a54 !important;
+}
+[data-testid="stTabs"] [data-baseweb="tab"] {
+    color: #8fa8cc !important;
+    background-color: transparent !important;
+}
+[data-testid="stTabs"] [aria-selected="true"] {
+    color: #c8d8f0 !important;
+    border-bottom: 2px solid #4a8cdb !important;
+}
+
+/* ── Expander ── */
+[data-testid="stExpander"] {
+    background-color: rgba(30, 37, 56, 0.7) !important;
+    border: 1px solid #2e3a54 !important;
+    border-radius: 8px !important;
+}
+[data-testid="stExpander"] summary,
+[data-testid="stExpander"] summary p {
+    color: #c0d0e8 !important;
+}
+
+/* ── Metric boxes ── */
+[data-testid="stMetric"] {
+    background-color: rgba(30, 37, 56, 0.7) !important;
+    border: 1px solid #2e3a54 !important;
+    border-radius: 8px !important;
+    padding: 0.8rem 1rem !important;
+}
+[data-testid="stMetricValue"] { color: #a8c8f0 !important; }
+[data-testid="stMetricLabel"] { color: #7090b0 !important; }
+
+/* ── Info / Warning / Error / Success banners ── */
+[data-testid="stAlert"] {
+    background-color: rgba(25, 35, 55, 0.85) !important;
+    border-radius: 8px !important;
+}
+.stAlert [data-testid="stMarkdownContainer"] p { color: #d0dff0 !important; }
+
+/* ── File uploader ── */
+[data-testid="stFileUploader"] {
+    background-color: rgba(30, 37, 56, 0.6) !important;
+    border: 1px dashed #3a4f78 !important;
+    border-radius: 8px !important;
+}
+
+/* ── Dataframe / table ── */
+[data-testid="stDataFrame"] { background-color: rgba(20, 28, 48, 0.8) !important; }
+.dvn-scroller { background-color: transparent !important; }
+
+/* ── Radio / Checkbox ── */
+.stRadio label, .stCheckbox label { color: #c0d0e8 !important; }
+
+/* ── Number input spinners ── */
+[data-baseweb="spinner"] { background-color: #1e2538 !important; }
+
+/* ── Divider ── */
+hr { border-color: #2e3a54 !important; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #141928; }
+::-webkit-scrollbar-thumb { background: #2e3a60; border-radius: 3px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -110,7 +241,7 @@ if st.session_state.get("logged_in") and st.session_state.get("school_info"):
         col1, col2, col3 = st.columns([2, 1, 1])
         with col3:
             st.markdown(f"""
-            <div style="background-color: #e8f4fd; padding: 8px 12px; border-radius: 8px; border-left: 4px solid #1f77b4; margin-top: 10px;">
+            <div style="background-color: rgba(30,50,80,0.7); padding: 8px 12px; border-radius: 8px; border-left: 4px solid #4a8cdb; margin-top: 10px; color: #c8d8f0;">
                 👋 你好，{school['name']}{school['registrant_name']}{school['identity']}
             </div>
             """, unsafe_allow_html=True)
