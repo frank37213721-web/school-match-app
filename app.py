@@ -69,7 +69,7 @@ if is_admin():
 elif not is_logged_in():
     menu = ["課程大廳", "學校帳號登入"]
 else:
-    menu = ["課程大廳", "管理中心 (我的課程)", "配對情形", "學校基本資料", "新增/修改課程", "登出"]
+    menu = ["課程大廳", "本校開課課程", "配對情形", "學校基本資料", "新增/修改課程", "登出"]
 
 # 強制跳轉至登入頁（首頁按鈕觸發）
 if st.session_state.get("force_login") and "學校帳號登入" in menu:
@@ -95,7 +95,7 @@ if choice == "課程大廳":
     render_lobby()
 elif choice == "學校帳號登入":
     render_login()
-elif choice == "管理中心 (我的課程)":
+elif choice == "本校開課課程":
     render_my_courses()
 elif choice == "學校基本資料":
     render_school_info()
