@@ -186,11 +186,93 @@ choice = st.sidebar.selectbox("選單", menu)
 if choice == "登出":
     st.session_state.logged_in = False
     st.session_state.school_info = None
+    st.session_state.entered_lobby = False
     st.session_state.admin_logged_in = False
     st.rerun()
 
 # --- 頁面內容 ---
 if choice == "課程大廳":
+
+    # ── 首頁 Landing Page ──────────────────────────────────────
+    if not st.session_state.get("entered_lobby", False):
+        st.markdown("""
+        <style>
+        /* 隱藏 Streamlit 預設 UI */
+        #MainMenu, footer, header { visibility: hidden; }
+        [data-testid="stSidebar"] { display: none; }
+        .stApp { background: #000 !important; }
+        .block-container { padding: 0 !important; max-width: 100% !important; }
+
+        /* 全版 Hero */
+        .hero {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 88vh;
+            text-align: center;
+            padding: 2rem 1rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+        }
+        .hero-eyebrow {
+            font-size: 1rem;
+            font-weight: 500;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: #2997ff;
+            margin-bottom: 1.4rem;
+        }
+        .hero-title {
+            font-size: clamp(2.8rem, 7vw, 5.5rem);
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            line-height: 1.05;
+            color: #f5f5f7;
+            margin-bottom: 1.2rem;
+        }
+        .hero-subtitle {
+            font-size: clamp(1rem, 2.5vw, 1.4rem);
+            font-weight: 300;
+            color: rgba(245,245,247,0.55);
+            letter-spacing: 0.01em;
+            margin-bottom: 3rem;
+        }
+        /* 登入連結右上 */
+        .top-login {
+            position: fixed;
+            top: 1.2rem;
+            right: 2rem;
+            z-index: 9999;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 0.9rem;
+            color: rgba(245,245,247,0.75);
+        }
+        /* 分隔線 */
+        .hero-divider {
+            width: 60px;
+            height: 1px;
+            background: rgba(245,245,247,0.2);
+            margin: 0 auto 2.5rem;
+        }
+        </style>
+
+        <div class="top-login">🔑 請由左側選單登入</div>
+
+        <div class="hero">
+            <div class="hero-eyebrow">教育 × 合作 × 創新</div>
+            <div class="hero-title">跨校課程<br>媒合平台</div>
+            <div class="hero-divider"></div>
+            <div class="hero-subtitle">Connecting everyone with curriculum</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        col1, col2, col3 = st.columns([2, 1, 2])
+        with col2:
+            if st.button("進入課程大廳 →", use_container_width=True, type="primary"):
+                st.session_state.entered_lobby = True
+                st.rerun()
+        st.stop()
+
     st.header("📚 現有跨校課程一覽")
     try:
         # 精確欄位查詢，含學校分區
