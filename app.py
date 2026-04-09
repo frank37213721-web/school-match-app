@@ -761,36 +761,104 @@ elif choice == "學校基本資料":
                         st.error("請填寫所有密碼欄位")
 
 elif choice == "新增/修改課程":
-    require_login()  # 要求登入權限
-    st.header("✍️ 上傳/管理您的課程")
+    require_login()
+    st.header("✍️ 管理您的課程")
     if st.session_state.school_info:
         school = st.session_state.school_info
-        st.write(f"開課單位：**{school['name']}")
+        st.write(f"開課單位：**{school['name']}**")
 
-        with st.form("course_form"):
-            c_title = st.text_input("課程名稱")
-            c_time = st.text_input("開課時間 (例如：每週三 14:00-16:00)")
-            c_students = st.number_input("跨校學生人數上限", min_value=0, value=20)
-            c_schools = st.number_input("跨校學校數目上限", min_value=0, value=2)
-            c_pdf = st.text_input("課程規劃表 PDF 連結 (Google Drive 分享連結等)")
-            c_syllabus = st.text_area("課程大綱/內容說明")
-            
-            submitted = st.form_submit_button("確認上傳課程")
-            if submitted:
-                new_course = {
-                    "host_school_id": school['id'],
-                    "title": c_title,
-                    "start_time": c_time,
-                    "max_students": c_students,
-                    "max_schools": c_schools,
-                    "plan_pdf_url": c_pdf,
-                    "syllabus": c_syllabus
-                }
-                try:
-                    supabase.table("courses").insert(new_course).execute()
-                    st.success("🎉 課程上傳成功！已同步顯示於首頁課程大廳。")
-                except Exception as e:
-                    st.error(f"上傳失敗：{e}")
+        tab_add, tab_edit = st.tabs(["➕ 新增課程", "✏️ 修改／刪除課程"])
+
+        # ── 新增課程 ──
+        with tab_add:
+            with st.form("course_form_add"):
+                c_title    = st.text_input("課程名稱")
+                c_time     = st.text_input("開課時間", placeholder="例：每週三 14:00-16:00")
+                c_students = st.number_input("跨校學生人數上限", min_value=0, value=20)
+                c_schools  = st.number_input("跨校學校數目上限", min_value=0, value=2)
+                c_pdf      = st.text_input("課程規劃表 PDF 連結")
+                c_syllabus = st.text_area("課程大綱／內容說明")
+                if st.form_submit_button("確認新增課程"):
+                    if not c_title:
+                        st.error("請填寫課程名稱。")
+                    else:
+                        try:
+                            supabase.table("courses").insert({
+                                "host_school_id": school['id'],
+                                "title": c_title,
+                                "start_time": c_time,
+                                "max_students": c_students,
+                                "max_schools": c_schools,
+                                "plan_pdf_url": c_pdf,
+                                "syllabus": c_syllabus,
+                            }).execute()
+                            st.success("🎉 課程新增成功！已同步顯示於課程大廳。")
+                        except Exception as e:
+                            st.error(f"新增失敗：{e}")
+
+        # ── 修改／刪除課程 ──
+        with tab_edit:
+            try:
+                my_courses = supabase.table("courses")\
+                    .select("id, title, start_time, max_students, max_schools, syllabus, plan_pdf_url")\
+                    .eq("host_school_id", school['id'])\
+                    .execute()
+                if not my_courses.data:
+                    st.info("您目前尚無開設任何課程。")
+                else:
+                    for c in my_courses.data:
+                        with st.expander(f"📖 {c['title']}"):
+                            with st.form(f"edit_form_{c['id']}"):
+                                e_title    = st.text_input("課程名稱", value=c['title'])
+                                e_time     = st.text_input("開課時間", value=c.get('start_time', ''))
+                                e_students = st.number_input("跨校學生人數上限", min_value=0, value=c.get('max_students', 20))
+                                e_schools  = st.number_input("跨校學校數目上限", min_value=0, value=c.get('max_schools', 2))
+                                e_pdf      = st.text_input("課程規劃表 PDF 連結", value=c.get('plan_pdf_url', '') or '')
+                                e_syllabus = st.text_area("課程大綱／內容說明", value=c.get('syllabus', '') or '')
+                                col_save, col_del = st.columns(2)
+                                with col_save:
+                                    if st.form_submit_button("💾 儲存修改"):
+                                        if not e_title:
+                                            st.error("課程名稱不得為空。")
+                                        else:
+                                            try:
+                                                supabase.table("courses").update({
+                                                    "title": e_title,
+                                                    "start_time": e_time,
+                                                    "max_students": e_students,
+                                                    "max_schools": e_schools,
+                                                    "plan_pdf_url": e_pdf,
+                                                    "syllabus": e_syllabus,
+                                                }).eq("id", c['id']).execute()
+                                                st.success("✅ 修改已儲存！")
+                                                st.rerun()
+                                            except Exception as e:
+                                                st.error(f"修改失敗：{e}")
+                                with col_del:
+                                    if st.form_submit_button("🗑️ 刪除此課程", type="secondary"):
+                                        confirm_key = f"del_confirm_{c['id']}"
+                                        st.session_state[confirm_key] = True
+
+                            # 刪除二次確認（在 form 外）
+                            confirm_key = f"del_confirm_{c['id']}"
+                            if st.session_state.get(confirm_key):
+                                st.warning(f"⚠️ 確定刪除「{c['title']}」？此操作將同時刪除所有媒合記錄，且**無法復原**。")
+                                col_yes, col_no = st.columns(2)
+                                with col_yes:
+                                    if st.button("✅ 確認刪除", key=f"yes_del_{c['id']}", type="primary"):
+                                        try:
+                                            delete_course_cascade(c['id'])
+                                            st.session_state[confirm_key] = False
+                                            st.success(f"已刪除「{c['title']}」。")
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error(f"刪除失敗：{e}")
+                                with col_no:
+                                    if st.button("❌ 取消", key=f"no_del_{c['id']}"):
+                                        st.session_state[confirm_key] = False
+                                        st.rerun()
+            except Exception as e:
+                st.error(f"讀取課程失敗：{e}")
 
 elif choice == "配對情形":
     require_login()  # 要求登入權限
