@@ -1031,14 +1031,8 @@ elif choice == "學校帳號登入":
             # 先查 school_registry DB
             matched_entry = next((e for e in _reg if (e.get("code") or "").upper() == code_input), None)
             if matched_entry:
-                matched_name = matched_entry["name"]
-                matched_dist = (matched_entry.get("district") or "").strip()
-                auto_school = matched_name
-                auto_district = matched_dist if matched_dist else None
-                if auto_district:
-                    st.success(f"✅ 已找到：**{matched_name}**（{matched_dist}）")
-                else:
-                    st.info(f"找到學校：**{matched_name}**，此學校尚未設定分區，請手動選擇。")
+                auto_school = matched_entry["name"]
+                auto_district = (matched_entry.get("district") or "").strip() or None
             else:
                 # fallback: 查 SCHOOL_CODE_MAP
                 matched_name = SCHOOL_CODE_MAP.get(code_input)
@@ -1048,23 +1042,25 @@ elif choice == "學校帳號登入":
                         if matched_name in slist:
                             auto_district = dist
                             break
-                    if auto_district:
-                        st.success(f"✅ 已找到：**{matched_name}**（{auto_district}）")
-                    else:
-                        st.info(f"找到學校：**{matched_name}**，請手動從下方選單選取。")
                 else:
                     st.error("找不到此代碼對應的學校，請確認代碼或直接從下方選單選取。")
 
-        district_list = list(schools_by_district.keys())
-        district_idx = district_list.index(auto_district) if auto_district and auto_district in district_list else 0
-
-        col_d, col_s = st.columns(2)
-        with col_d:
-            selected_district = st.selectbox("選擇分區", district_list, index=district_idx)
-        with col_s:
-            schools_in_district = schools_by_district.get(selected_district, [])
-            school_idx = schools_in_district.index(auto_school) if auto_school and auto_school in schools_in_district else 0
-            selected_school = st.selectbox("選擇學校", schools_in_district, index=school_idx)
+        # 若代碼已找到學校 → 直接顯示學校名稱（可修改）
+        if auto_school:
+            selected_school = st.text_input("學校名稱", value=auto_school)
+            selected_district = auto_district or ""
+            if auto_district:
+                st.caption(f"分區：{auto_district}")
+        else:
+            # 未輸入代碼或找不到 → 顯示分區 + 學校選單
+            district_list = list(schools_by_district.keys())
+            district_idx = district_list.index(auto_district) if auto_district and auto_district in district_list else 0
+            col_d, col_s = st.columns(2)
+            with col_d:
+                selected_district = st.selectbox("選擇分區", district_list, index=district_idx)
+            with col_s:
+                schools_in_district = schools_by_district.get(selected_district, [])
+                selected_school = st.selectbox("選擇學校", schools_in_district)
 
         district = selected_district
         school_name = selected_school
