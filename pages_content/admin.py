@@ -223,7 +223,7 @@ def _render_registry_tab():
 
     # ── 上傳 Excel 更新 ──
     with st.expander("📤 上傳 Excel 更新學校清單"):
-        st.caption("欄位需包含：**代碼**（選填）、**學校名稱**（必填）、**分區**（選填）。相同代碼或名稱的資料若有差異則覆蓋，不存在則新增，原有但未出現在檔案中的資料保留不刪除。")
+        st.caption("欄位需包含：**代碼**（選填）、**學校名稱**（必填）、**分區**（選填）。相同代碼或名稱若有差異則覆蓋，不存在則新增，原有但未出現在檔案中的資料將詢問是否刪除。")
         uploaded = st.file_uploader("選擇 Excel 檔案（.xlsx）", type=["xlsx"], key="reg_upload")
         if uploaded:
             try:
@@ -250,19 +250,38 @@ def _render_registry_tab():
                         })
                     rows = [r for r in rows if r["name"]]  # 過濾空名稱
 
-                    st.write(f"讀取到 **{len(rows)}** 筆資料，預覽：")
+                    # 計算「原有但未出現在上傳檔案中」的資料
+                    upload_names = {r["name"] for r in rows}
+                    upload_codes = {r["code"] for r in rows if r["code"]}
+                    missing_in_upload = [
+                        r for r in all_reg
+                        if r["name"] not in upload_names and r.get("code") not in upload_codes
+                    ]
+
+                    st.write(f"讀取到 **{len(rows)}** 筆資料，預覽（前10筆）：")
                     st.dataframe(pd.DataFrame(rows).head(10), use_container_width=True, hide_index=True)
+
+                    if missing_in_upload:
+                        st.warning(f"⚠️ 有 **{len(missing_in_upload)}** 筆現有資料未出現在上傳檔案中：")
+                        st.dataframe(
+                            pd.DataFrame([{"代碼": r.get("code") or "—", "學校名稱": r["name"], "分區": r.get("district") or "—"} for r in missing_in_upload]),
+                            use_container_width=True, hide_index=True
+                        )
+                        delete_missing = st.checkbox(
+                            f"同時刪除這 {len(missing_in_upload)} 筆未出現在檔案中的資料",
+                            key="upload_delete_missing"
+                        )
+                    else:
+                        delete_missing = False
 
                     if st.button("✅ 確認匯入", type="primary", key="confirm_upload"):
                         existing_by_code = {r["code"]: r for r in all_reg if r.get("code")}
                         existing_by_name = {r["name"]: r for r in all_reg}
                         added = updated = skipped = 0
                         for r in rows:
-                            # 優先以代碼比對，否則以名稱比對
                             existing = existing_by_code.get(r["code"]) if r["code"] else None
                             if existing is None:
                                 existing = existing_by_name.get(r["name"])
-
                             if existing is None:
                                 supabase.table("school_registry").insert(r).execute()
                                 added += 1
@@ -276,7 +295,15 @@ def _render_registry_tab():
                                     updated += 1
                                 else:
                                     skipped += 1
-                        st.success(f"✅ 完成：新增 {added} 筆，更新 {updated} 筆，未變動 {skipped} 筆")
+                        deleted = 0
+                        if delete_missing and missing_in_upload:
+                            for r in missing_in_upload:
+                                supabase.table("school_registry").delete().eq("id", r["id"]).execute()
+                                deleted += 1
+                        msg = f"✅ 完成：新增 {added} 筆，更新 {updated} 筆，未變動 {skipped} 筆"
+                        if deleted:
+                            msg += f"，刪除 {deleted} 筆"
+                        st.success(msg)
                         st.rerun()
             except Exception as e:
                 st.error(f"讀取 Excel 失敗：{e}")
