@@ -87,19 +87,19 @@ def render_lobby():
         matches_by_course = {}
 
     # ── 篩選列（單行）──
-    all_districts = sorted({c['schools'].get('district', '') for c in courses if c.get('schools') and c['schools'].get('district')})
-    col_kw, col_type, col_dist = st.columns([3, 3, 2])
+    DAYS = ["週一", "週二", "週三", "週四", "週五", "週六"]
+    col_kw, col_type, col_day = st.columns([3, 3, 2])
     with col_kw:
         keyword = st.text_input("🔍 搜尋課程", placeholder="課程名稱或關鍵字", label_visibility="collapsed")
     with col_type:
         selected_types = st.multiselect("課程種類", COURSE_TYPES, placeholder="篩選課程種類", label_visibility="collapsed")
-    with col_dist:
-        selected_district = st.selectbox("分區", ["全部分區"] + all_districts, label_visibility="collapsed")
+    with col_day:
+        selected_day = st.selectbox("開課時間", ["全部時間"] + DAYS, label_visibility="collapsed")
 
     # 篩選
     filtered = [
         c for c in courses
-        if (selected_district == "全部分區" or c.get('schools', {}).get('district') == selected_district)
+        if (selected_day == "全部時間" or selected_day in (c.get('start_time') or ''))
         and (not keyword or keyword in (c.get('title') or '') or keyword in (c.get('syllabus') or ''))
         and (not selected_types or c.get('course_type') in selected_types)
     ]
@@ -114,7 +114,7 @@ def render_lobby():
     if "lobby_page" not in st.session_state:
         st.session_state.lobby_page = 0
     # 篩選條件變動時重設頁碼
-    filter_key = f"{keyword}|{selected_types}|{selected_district}"
+    filter_key = f"{keyword}|{selected_types}|{selected_day}"
     if st.session_state.get("lobby_filter_key") != filter_key:
         st.session_state.lobby_filter_key = filter_key
         st.session_state.lobby_page = 0
