@@ -8,50 +8,54 @@ PAGE_SIZE = 5
 def render_lobby():
     # ── 首頁 Landing Page ──
     if not st.session_state.get("entered_lobby", False):
-        st.markdown("""
-        <style>
-        #MainMenu, footer, header { visibility: hidden; }
-        [data-testid="stSidebar"] { display: none; }
-        .stApp { background: linear-gradient(160deg, #10141f 0%, #172035 55%, #10141f 100%) !important; }
-        .block-container { padding: 0 !important; max-width: 100% !important; }
-        .hero {
-            display: flex; flex-direction: column; align-items: center;
-            text-align: center; padding-top: 18vh; padding-bottom: 2rem;
-            padding-left: 1rem; padding-right: 1rem;
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
-        }
-        .hero-eyebrow { font-size:1rem; font-weight:500; letter-spacing:0.15em;
-            text-transform:uppercase; color:#2997ff; margin-bottom:1.4rem; }
-        .hero-title { font-size:clamp(2.8rem,7vw,5.5rem); font-weight:700;
-            letter-spacing:-0.025em; line-height:1.05; color:#f5f5f7; margin-bottom:1.2rem; }
-        .hero-subtitle { font-size:clamp(1rem,2.5vw,1.4rem); font-weight:300;
-            color:rgba(245,245,247,0.55); letter-spacing:0.01em; margin-bottom:0; }
-        .hero-divider { width:60px; height:1px; background:rgba(245,245,247,0.2);
-            margin:0 auto 2rem; }
-        .stApp .stButton > button, .stApp [data-testid="baseButton-secondary"],
-        .stApp [data-testid="baseButton-primary"],
-        .stApp .stButton > button span, .stApp [data-testid="baseButton-secondary"] span,
-        .stApp [data-testid="baseButton-primary"] span {
-            color:#ffffff !important; font-weight:600 !important; letter-spacing:0.02em !important; }
-        </style>
-        <div class="hero">
-            <div class="hero-eyebrow">教育 × 合作 × 創新</div>
-            <div class="hero-title">跨校課程<br>匯流平台</div>
-            <div class="hero-divider"></div>
-            <div class="hero-subtitle">Connecting everyone with curriculum</div>
-        </div>
-        """, unsafe_allow_html=True)
+        _landing = st.empty()
+        with _landing.container():
+            st.markdown("""
+            <style>
+            #MainMenu, footer, header { visibility: hidden; }
+            [data-testid="stSidebar"] { display: none; }
+            .stApp { background: linear-gradient(160deg, #10141f 0%, #172035 55%, #10141f 100%) !important; }
+            .block-container { padding: 0 !important; max-width: 100% !important; }
+            .hero {
+                display: flex; flex-direction: column; align-items: center;
+                text-align: center; padding-top: 18vh; padding-bottom: 2rem;
+                padding-left: 1rem; padding-right: 1rem;
+                font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+            }
+            .hero-eyebrow { font-size:1rem; font-weight:500; letter-spacing:0.15em;
+                text-transform:uppercase; color:#2997ff; margin-bottom:1.4rem; }
+            .hero-title { font-size:clamp(2.8rem,7vw,5.5rem); font-weight:700;
+                letter-spacing:-0.025em; line-height:1.05; color:#f5f5f7; margin-bottom:1.2rem; }
+            .hero-subtitle { font-size:clamp(1rem,2.5vw,1.4rem); font-weight:300;
+                color:rgba(245,245,247,0.55); letter-spacing:0.01em; margin-bottom:0; }
+            .hero-divider { width:60px; height:1px; background:rgba(245,245,247,0.2);
+                margin:0 auto 2rem; }
+            .stApp .stButton > button, .stApp [data-testid="baseButton-secondary"],
+            .stApp [data-testid="baseButton-primary"],
+            .stApp .stButton > button span, .stApp [data-testid="baseButton-secondary"] span,
+            .stApp [data-testid="baseButton-primary"] span {
+                color:#ffffff !important; font-weight:600 !important; letter-spacing:0.02em !important; }
+            </style>
+            <div class="hero">
+                <div class="hero-eyebrow">教育 × 合作 × 創新</div>
+                <div class="hero-title">跨校課程<br>匯流平台</div>
+                <div class="hero-divider"></div>
+                <div class="hero-subtitle">Connecting everyone with curriculum</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-        col1, col2, col3 = st.columns([2, 1, 2])
-        with col2:
-            if st.button("學校帳號 Sign in / Sign Up", use_container_width=True):
-                st.session_state.entered_lobby = True
-                st.session_state.force_login = True
-                st.rerun()
-            st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
-            if st.button("進入課程大廳 →", use_container_width=True, type="primary"):
-                st.session_state.entered_lobby = True
-                st.rerun()
+            col1, col2, col3 = st.columns([2, 1, 2])
+            with col2:
+                if st.button("學校帳號 Sign in / Sign Up", use_container_width=True):
+                    _landing.empty()
+                    st.session_state.entered_lobby = True
+                    st.session_state.force_login = True
+                    st.rerun()
+                st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
+                if st.button("進入課程大廳 →", use_container_width=True, type="primary"):
+                    _landing.empty()
+                    st.session_state.entered_lobby = True
+                    st.rerun()
         st.stop()
 
     # ── 課程大廳 ──
