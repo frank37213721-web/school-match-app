@@ -207,31 +207,25 @@ def render_lobby():
         if c.get('credits'):
             tags_html += f"<span style='background:#ede9fe;color:#6d28d9;padding:2px 10px;border-radius:20px;font-size:0.75rem;font-weight:600'>{c['credits']} 學分</span>"
 
-        # 卡片列：卡片 HTML ＋ 右側按鈕同一行
+        # ── 卡片（全寬 HTML）──
         is_expanded = st.session_state[detail_key]
 
-        if is_admin():
-            col_card, col_det, col_del = st.columns([7, 1.5, 1.5])
-        else:
-            col_card, col_det = st.columns([8, 2])
-            col_del = None
-
-        with col_card:
-            st.markdown(f"""
+        st.markdown(f"""
 <div style="
     background: #ffffff;
     border-left: 4px solid #2563a8;
     border-radius: 12px;
-    padding: 1.1rem 1.6rem 1rem 1.4rem;
-    box-shadow: 0 4px 18px rgba(30,50,120,0.12), 0 1px 4px rgba(30,50,120,0.07);
+    padding: 1.3rem 1.8rem 1.3rem 1.5rem;
+    box-shadow: 0 4px 20px rgba(30,50,120,0.11), 0 1px 4px rgba(30,50,120,0.06);
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
+    margin-bottom: 0.5rem;
 ">
     <div style="flex:1; min-width:0">
-        {f'<div style="margin-bottom:0.45rem">{tags_html}</div>' if tags_html else ''}
-        <div style="font-size:1.05rem;font-weight:700;color:#1a2340;margin-bottom:0.3rem;
+        {f'<div style="margin-bottom:0.5rem">{tags_html}</div>' if tags_html else ''}
+        <div style="font-size:1.08rem;font-weight:700;color:#1a2340;margin-bottom:0.35rem;
                     white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{c['title']}</div>
         <div style="font-size:0.82rem;color:#5a6a8a">
             🏫 {school_name}{'&nbsp;·&nbsp;' + district if district else ''}&nbsp;&nbsp;🗓️ {time_str}
@@ -243,8 +237,14 @@ def render_lobby():
 </div>
 """, unsafe_allow_html=True)
 
+        # ── 按鈕列（緊接卡片，右對齊小按鈕）──
+        if is_admin():
+            _, col_det, col_del = st.columns([5, 1, 1])
+        else:
+            _, col_det = st.columns([6, 1])
+            col_del = None
+
         with col_det:
-            st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
             if st.button(
                 "收起 ▴" if is_expanded else "詳情 ▾",
                 key=f"dtl_{c['id']}", use_container_width=True
@@ -255,7 +255,6 @@ def render_lobby():
 
         if col_del is not None:
             with col_del:
-                st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
                 if st.button("🗑️ 刪除", key=f"admin_del_{c['id']}", use_container_width=True, type="secondary"):
                     st.session_state[f"admin_del_confirm_{c['id']}"] = True
 
@@ -278,13 +277,11 @@ def render_lobby():
 
         # ── 詳情展開區 ──
         if is_expanded:
+            st.markdown("""
+<div style="border-left:3px solid #c0d0f0;margin:0.2rem 0 0.8rem 0.8rem;padding:0.8rem 1rem 0.5rem 1.2rem;
+            background:rgba(255,255,255,0.7);border-radius:0 8px 8px 0">
+</div>""", unsafe_allow_html=True)
             with st.container():
-                st.markdown("""
-<div style="background:#f8faff;border-left:4px solid #2563a8;border-radius:0 0 12px 12px;
-            padding:1rem 1.6rem 1.2rem 1.4rem;margin-top:-0.5rem;
-            box-shadow:0 6px 18px rgba(30,50,120,0.10)">
-</div>
-""", unsafe_allow_html=True)
                 col_d1, col_d2 = st.columns(2)
                 with col_d1:
                     if c.get('course_type'):
@@ -346,6 +343,8 @@ def render_lobby():
                     with col_send:
                         if st.button("確定送出申請", key=f"send_{c['id']}", disabled=not all_confirmed, type="primary"):
                             _submit_application(c, matches_by_course, max_schools, total_active)
+
+        st.markdown("<div style='height:1.2rem'></div>", unsafe_allow_html=True)
 
 
 def _submit_application(c, matches_by_course, max_schools, total_active):
