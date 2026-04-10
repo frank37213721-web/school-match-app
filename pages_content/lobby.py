@@ -67,6 +67,15 @@ def render_lobby():
                     st.rerun()
         st.stop()
 
+    # ── 申請成功回饋訊息 ──
+    if st.session_state.get("apply_success_msg"):
+        msg = st.session_state.pop("apply_success_msg")
+        msg_type = st.session_state.pop("apply_success_type", "success")
+        if msg_type == "success":
+            st.success(msg)
+        else:
+            st.warning(msg)
+
     # ── 課程大廳 ──
     st.header("📚 課程大廳")
 
@@ -411,10 +420,20 @@ def _submit_application(c, matches_by_course, max_schools, total_active):
                     if not ok:
                         failed.append(r['name'])
 
+            host_name = host['name']
+            course_title = c['title']
             if failed:
-                st.warning(f"⚠️ 申請已送出，但部分 Email 發送失敗：{', '.join(failed)}")
+                st.session_state["apply_success_msg"] = (
+                    f"📬 貴校對於「**{host_name}**」的「**{course_title}**」已送出配對申請。\n\n"
+                    f"⚠️ 部分 Email 發送失敗（{', '.join(failed)}），請自行聯繫對方確認。"
+                )
+                st.session_state["apply_success_type"] = "warning"
             else:
-                st.success("✅ 配對申請已成功送出！相關人員將收到通知 Email。")
+                st.session_state["apply_success_msg"] = (
+                    f"📬 貴校對於「**{host_name}**」的「**{course_title}**」已送出配對申請。\n\n"
+                    f"對方學校承辦人、承辦處室主任、校長均已收到 Email 通知，請耐心等候回覆。"
+                )
+                st.session_state["apply_success_type"] = "success"
             st.session_state[apply_key] = False
             st.rerun()
         except Exception as e:
