@@ -9,7 +9,7 @@ from pages_content.add_course import render_add_course
 from pages_content.matches import render_matches
 from pages_content.admin import render_admin
 
-st.set_page_config(page_title="跨校課程匯流平台", layout="wide")
+st.set_page_config(page_title="跨校課程匯流平台", layout="wide", initial_sidebar_state="expanded")
 st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 
 # ── 初始化登入狀態 ──
