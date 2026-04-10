@@ -1,5 +1,5 @@
 import streamlit as st
-from utils import supabase, send_email, is_valid_email
+from utils import supabase, send_email, is_valid_email, is_admin, delete_course_cascade
 
 COURSE_TYPES = ["部定必修", "加深加廣選修", "校訂必修", "多元選修", "彈性課程"]
 PAGE_SIZE = 5
@@ -137,6 +137,31 @@ def render_lobby():
             st.session_state.lobby_page += 1
             st.rerun()
 
+    # ── 管理員：刪除全部課程 ──
+    if is_admin():
+        st.divider()
+        _, col_del_all = st.columns([6, 2])
+        with col_del_all:
+            if st.button("🗑️ 刪除全部課程", use_container_width=True, type="secondary"):
+                st.session_state["admin_del_all_confirm"] = True
+        if st.session_state.get("admin_del_all_confirm"):
+            st.warning("⚠️ 確定要刪除**所有課程**？此操作將同時刪除所有配對記錄，且**無法復原**。")
+            col_yes, col_no, _ = st.columns([2, 2, 4])
+            with col_yes:
+                if st.button("✅ 確認刪除全部", type="primary", key="admin_del_all_yes"):
+                    try:
+                        for cid in all_course_ids:
+                            delete_course_cascade(cid)
+                        st.session_state["admin_del_all_confirm"] = False
+                        st.success("已刪除所有課程。")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"刪除失敗：{e}")
+            with col_no:
+                if st.button("❌ 取消", key="admin_del_all_no"):
+                    st.session_state["admin_del_all_confirm"] = False
+                    st.rerun()
+
     st.divider()
 
     logged_in_school_id = (
@@ -213,7 +238,12 @@ def render_lobby():
 """, unsafe_allow_html=True)
 
         # 詳情按鈕列（緊接卡片底部）
-        _, col_det = st.columns([8, 2])
+        if is_admin():
+            _, col_det, col_del = st.columns([6, 2, 2])
+        else:
+            _, col_det = st.columns([8, 2])
+            col_del = None
+
         with col_det:
             if st.button(
                 "收起 ▴" if is_expanded else "詳情 ▾",
@@ -222,6 +252,28 @@ def render_lobby():
                 st.session_state[detail_key] = not is_expanded
                 st.session_state[apply_key] = False
                 st.rerun()
+
+        if col_del is not None:
+            with col_del:
+                if st.button("🗑️ 刪除", key=f"admin_del_{c['id']}", use_container_width=True, type="secondary"):
+                    st.session_state[f"admin_del_confirm_{c['id']}"] = True
+
+        if is_admin() and st.session_state.get(f"admin_del_confirm_{c['id']}"):
+            st.warning(f"⚠️ 確定刪除「**{c['title']}**」？此操作將同時刪除所有配對記錄，且**無法復原**。")
+            col_yes, col_no, _ = st.columns([2, 2, 4])
+            with col_yes:
+                if st.button("✅ 確認刪除", key=f"admin_del_yes_{c['id']}", type="primary"):
+                    try:
+                        delete_course_cascade(c['id'])
+                        st.session_state[f"admin_del_confirm_{c['id']}"] = False
+                        st.success(f"已刪除「{c['title']}」。")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"刪除失敗：{e}")
+            with col_no:
+                if st.button("❌ 取消", key=f"admin_del_no_{c['id']}"):
+                    st.session_state[f"admin_del_confirm_{c['id']}"] = False
+                    st.rerun()
 
         # ── 詳情展開區 ──
         if is_expanded:
