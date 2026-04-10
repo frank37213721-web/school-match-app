@@ -2,6 +2,15 @@ import streamlit as st
 from utils import supabase, send_email, is_valid_email, is_admin, delete_course_cascade
 
 COURSE_TYPES = ["部定必修", "加深加廣選修", "校訂必修", "多元選修", "彈性課程"]
+
+# 各課程種類對應顏色（背景, 文字, 左邊框）
+COURSE_TYPE_COLORS = {
+    "部定必修":    {"bg": "#dbeafe", "text": "#1d4ed8", "border": "#2563eb"},
+    "加深加廣選修": {"bg": "#dcfce7", "text": "#15803d", "border": "#16a34a"},
+    "校訂必修":    {"bg": "#fef9c3", "text": "#a16207", "border": "#ca8a04"},
+    "多元選修":    {"bg": "#ffe4e6", "text": "#be123c", "border": "#e11d48"},
+    "彈性課程":    {"bg": "#f3e8ff", "text": "#7e22ce", "border": "#9333ea"},
+}
 PAGE_SIZE = 5
 
 
@@ -100,13 +109,14 @@ def render_lobby():
     with col_day:
         selected_day = st.selectbox("開課時間", ["全部時間"] + DAYS, label_visibility="collapsed")
 
-    # 篩選
+    # 篩選 + 同課程種類排在一起
     filtered = [
         c for c in courses
         if (selected_day == "全部時間" or selected_day in (c.get('start_time') or ''))
         and (not keyword or keyword in (c.get('title') or '') or keyword in (c.get('syllabus') or ''))
         and (not selected_types or c.get('course_type') in selected_types)
     ]
+    filtered.sort(key=lambda c: COURSE_TYPES.index(c['course_type']) if c.get('course_type') in COURSE_TYPES else 99)
 
     total = len(filtered)
     if total == 0:
@@ -205,9 +215,11 @@ def render_lobby():
             status_html = f"<span style='color:#1a7a40;font-weight:700;font-size:0.92rem'>🟢 開放中 {approved_count}/{max_schools}</span>"
 
         # 標籤列 HTML
+        ct = c.get('course_type', '')
+        ct_color = COURSE_TYPE_COLORS.get(ct, {"bg": "#f0f0f0", "text": "#444444", "border": "#2563a8"})
         tags_html = ""
-        if c.get('course_type'):
-            tags_html += f"<span style='background:#dbeafe;color:#1d4ed8;padding:2px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;margin-right:6px'>{c['course_type']}</span>"
+        if ct:
+            tags_html += f"<span style='background:{ct_color['bg']};color:{ct_color['text']};padding:2px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;margin-right:6px'>{ct}</span>"
         if c.get('credits'):
             tags_html += f"<span style='background:#ede9fe;color:#6d28d9;padding:2px 10px;border-radius:20px;font-size:0.75rem;font-weight:600'>{c['credits']} 學分</span>"
 
@@ -217,7 +229,7 @@ def render_lobby():
         st.markdown(f"""
 <div style="
     background: #ffffff;
-    border-left: 4px solid #2563a8;
+    border-left: 4px solid {ct_color['border']};
     border-radius: 12px;
     padding: 1.3rem 1.8rem 1.3rem 1.5rem;
     box-shadow: 0 4px 20px rgba(30,50,120,0.11), 0 1px 4px rgba(30,50,120,0.06);
