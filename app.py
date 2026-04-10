@@ -26,11 +26,41 @@ if st.session_state.get("logged_in") and st.session_state.get("school_info"):
     )
     st.sidebar.divider()
 
-# ── 配對回覆通知（答應 / 拒絕），登入後持續顯示直到按知道了 ──
+# ── 登入後通知：收到的配對申請 + 自己申請的回覆 ──
 if st.session_state.get("logged_in") and st.session_state.get("school_info"):
     school = st.session_state.school_info
     if 'dismissed_notifications' not in st.session_state:
         st.session_state.dismissed_notifications = set()
+
+    # 1. 收到其他學校的配對申請（開課學校身份，status=pending）
+    try:
+        incoming_res = supabase.table("matches")\
+            .select("id, partner_school_id, course_id, schools(name)")\
+            .in_("course_id",
+                [r['id'] for r in
+                 supabase.table("courses").select("id").eq("host_school_id", school['id']).execute().data
+                ] or ["00000000-0000-0000-0000-000000000000"]
+            )\
+            .eq("status", "pending")\
+            .execute()
+        for m in incoming_res.data:
+            notif_key = f"incoming_{m['id']}"
+            if notif_key not in st.session_state.dismissed_notifications:
+                applicant_name = (m.get('schools') or {}).get('name', '某學校')
+                course_res = supabase.table("courses").select("title").eq("id", m['course_id']).execute()
+                course_title = course_res.data[0]['title'] if course_res.data else '（課程）'
+                st.info(
+                    f"📨 **收到配對申請**\n\n"
+                    f"貴校已收到來自「**{applicant_name}**」對於課程「**{course_title}**」的配對申請，"
+                    f"請至「**配對情形**」中點選確認或婉拒。"
+                )
+                if st.button("知道了", key=f"dismiss_notif_{notif_key}"):
+                    st.session_state.dismissed_notifications.add(notif_key)
+                    st.rerun()
+    except Exception:
+        pass
+
+    # 2. 自己送出申請後，對方已回覆（approved / rejected）
     try:
         notif_res = supabase.table("matches")\
             .select("id, status, course_id")\
@@ -38,7 +68,8 @@ if st.session_state.get("logged_in") and st.session_state.get("school_info"):
             .in_("status", ["approved", "rejected"])\
             .execute()
         for m in notif_res.data:
-            if m['id'] not in st.session_state.dismissed_notifications:
+            notif_key = f"reply_{m['id']}"
+            if notif_key not in st.session_state.dismissed_notifications:
                 course_res = supabase.table("courses")\
                     .select("title, schools(name)")\
                     .eq("id", m['course_id'])\
@@ -57,8 +88,8 @@ if st.session_state.get("logged_in") and st.session_state.get("school_info"):
                             f"😔 **配對申請通知**\n\n"
                             f"很遺憾，**{host_name}** 婉拒了您對課程「**{c['title']}**」的申請。"
                         )
-                    if st.button("知道了", key=f"dismiss_notif_{m['id']}"):
-                        st.session_state.dismissed_notifications.add(m['id'])
+                    if st.button("知道了", key=f"dismiss_notif_{notif_key}"):
+                        st.session_state.dismissed_notifications.add(notif_key)
                         st.rerun()
     except Exception:
         pass
