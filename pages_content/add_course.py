@@ -178,20 +178,46 @@ def render_add_course():
                         # 刪除二次確認（在 form 外）
                         confirm_key = f"del_confirm_{c['id']}"
                         if st.session_state.get(confirm_key):
-                            st.warning(f"⚠️ 確定刪除「{c['title']}」？此操作將同時刪除所有配對記錄，且**無法復原**。")
-                            col_yes, col_no = st.columns(2)
-                            with col_yes:
-                                if st.button("✅ 確認刪除", key=f"yes_del_{c['id']}", type="primary"):
-                                    try:
-                                        delete_course_cascade(c['id'])
-                                        st.session_state[confirm_key] = False
-                                        st.success(f"已刪除「{c['title']}」。")
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error(f"刪除失敗：{e}")
-                            with col_no:
-                                if st.button("❌ 取消", key=f"no_del_{c['id']}"):
+                            # 檢查是否有其他學校已送出媒合申請
+                            try:
+                                pending_res = supabase.table("matches")\
+                                    .select("id, partner_school_id, status, schools(name)")\
+                                    .eq("course_id", c['id'])\
+                                    .in_("status", ["pending", "approved"])\
+                                    .execute()
+                                pending_matches = pending_res.data or []
+                            except Exception:
+                                pending_matches = []
+
+                            if pending_matches:
+                                school_names = []
+                                for m in pending_matches:
+                                    n = (m.get('schools') or {}).get('name', '（未知學校）')
+                                    status_label = "已核准" if m['status'] == 'approved' else "待審中"
+                                    school_names.append(f"**{n}**（{status_label}）")
+                                st.error(
+                                    f"🚫 無法刪除「{c['title']}」\n\n"
+                                    f"以下學校已送出媒合申請，請先在「配對情形」頁面處理後再刪除：\n\n"
+                                    + "\n".join(f"- {s}" for s in school_names)
+                                )
+                                if st.button("知道了", key=f"blocked_del_{c['id']}"):
                                     st.session_state[confirm_key] = False
                                     st.rerun()
+                            else:
+                                st.warning(f"⚠️ 確定刪除「{c['title']}」？此操作將同時刪除所有配對記錄，且**無法復原**。")
+                                col_yes, col_no = st.columns(2)
+                                with col_yes:
+                                    if st.button("✅ 確認刪除", key=f"yes_del_{c['id']}", type="primary"):
+                                        try:
+                                            delete_course_cascade(c['id'])
+                                            st.session_state[confirm_key] = False
+                                            st.success(f"已刪除「{c['title']}」。")
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error(f"刪除失敗：{e}")
+                                with col_no:
+                                    if st.button("❌ 取消", key=f"no_del_{c['id']}"):
+                                        st.session_state[confirm_key] = False
+                                        st.rerun()
         except Exception as e:
             st.error(f"讀取課程失敗：{e}")
