@@ -207,21 +207,27 @@ def render_lobby():
         if c.get('credits'):
             tags_html += f"<span style='background:#ede9fe;color:#6d28d9;padding:2px 10px;border-radius:20px;font-size:0.75rem;font-weight:600'>{c['credits']} 學分</span>"
 
-        # 卡片 HTML（白底＋藍左線＋陰影）
+        # 卡片列：卡片 HTML ＋ 右側按鈕同一行
         is_expanded = st.session_state[detail_key]
-        bottom_radius = "0 0 0 0" if is_expanded else "0 12px 12px 0"
-        st.markdown(f"""
+
+        if is_admin():
+            col_card, col_det, col_del = st.columns([7, 1.5, 1.5])
+        else:
+            col_card, col_det = st.columns([8, 2])
+            col_del = None
+
+        with col_card:
+            st.markdown(f"""
 <div style="
     background: #ffffff;
     border-left: 4px solid #2563a8;
-    border-radius: 12px 12px {bottom_radius};
+    border-radius: 12px;
     padding: 1.1rem 1.6rem 1rem 1.4rem;
     box-shadow: 0 4px 18px rgba(30,50,120,0.12), 0 1px 4px rgba(30,50,120,0.07);
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
-    margin-bottom: 0;
 ">
     <div style="flex:1; min-width:0">
         {f'<div style="margin-bottom:0.45rem">{tags_html}</div>' if tags_html else ''}
@@ -237,14 +243,8 @@ def render_lobby():
 </div>
 """, unsafe_allow_html=True)
 
-        # 詳情按鈕列（緊接卡片底部）
-        if is_admin():
-            _, col_det, col_del = st.columns([6, 2, 2])
-        else:
-            _, col_det = st.columns([8, 2])
-            col_del = None
-
         with col_det:
+            st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
             if st.button(
                 "收起 ▴" if is_expanded else "詳情 ▾",
                 key=f"dtl_{c['id']}", use_container_width=True
@@ -255,6 +255,7 @@ def render_lobby():
 
         if col_del is not None:
             with col_del:
+                st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
                 if st.button("🗑️ 刪除", key=f"admin_del_{c['id']}", use_container_width=True, type="secondary"):
                     st.session_state[f"admin_del_confirm_{c['id']}"] = True
 
