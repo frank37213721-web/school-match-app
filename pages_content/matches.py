@@ -16,6 +16,14 @@ def render_matches():
     st.header("🤝 課程配對進度追蹤")
     school = st.session_state.school_info
 
+    # 操作後回饋訊息
+    if "match_feedback" in st.session_state:
+        fb_type, fb_msg = st.session_state.pop("match_feedback")
+        if fb_type == "success":
+            st.success(fb_msg)
+        else:
+            st.warning(fb_msg)
+
     tab1, tab2 = st.tabs(["我是開課學校 (收到的申請)", "我是合作學校 (寄出的申請)"])
 
     with tab1:
@@ -83,10 +91,14 @@ def render_matches():
                                                         f"配對成功通知：您的課程申請「{course_title}」已被核准",
                                                         f"親愛的 {recipient_name}：\n\n恭喜！{partner_name} 對課程「{course_title}」的配對申請已獲得開課學校「{school['name']}」正式核准，雙方合作正式成立。\n\n【開課學校聯絡資訊】\n- 承辦人姓名：{school.get('registrant_name', '未提供')}\n- 承辦人 Email：{school.get('registrant_email', '未提供')}\n- 承辦處室主任 Email：{school.get('academic_director_email', '未提供')}\n- 學校電話：{school.get('phone', '未提供')}\n- 承辦人分機：{school.get('registrant_extension', '未提供')}\n\n請盡快與開課學校聯繫，確認後續合作細節。\n\n跨校課程匯流平台"
                                                     )
-                                            st.success(f"已確認與 {partner_name} 正式合作，通知 Email 已發送！")
+                                            st.session_state["match_feedback"] = (
+                                                "success",
+                                                f"已確認與「**{partner_name}**」就課程「**{course_title}**」正式合作！"
+                                                f"對方學校承辦人、承辦處室主任、校長均將在系統與郵件收到通知。"
+                                            )
                                             st.rerun()
                                 with col2:
-                                    if st.button("❌ 拒絕", key=f"reject_{m['id']}"):
+                                    if st.button("🙏 婉拒", key=f"reject_{m['id']}"):
                                         supabase.table("matches").update({"status": "rejected"}).eq("id", m['id']).execute()
                                         for recipient_email, recipient_name in [
                                             (partner_info.get('registrant_email'), partner_info.get('registrant_name', '承辦人')),
@@ -99,7 +111,11 @@ def render_matches():
                                                     f"配對申請通知：「{course_title}」申請未獲通過",
                                                     f"親愛的 {recipient_name}：\n\n很遺憾，{partner_name} 對課程「{course_title}」的配對申請已被開課學校「{school['name']}」婉拒。\n\n跨校課程匯流平台"
                                                 )
-                                        st.warning(f"已婉拒 {partner_name} 的申請，通知 Email 已發送。")
+                                        st.session_state["match_feedback"] = (
+                                            "warning",
+                                            f"已婉拒「**{partner_name}**」對課程「**{course_title}**」的申請。"
+                                            f"對方學校承辦人、承辦處室主任、校長均將在系統與郵件收到通知。"
+                                        )
                                         st.rerun()
                 else:
                     st.write("目前尚無收到申請。")
