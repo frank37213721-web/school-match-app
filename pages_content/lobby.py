@@ -277,10 +277,6 @@ def render_lobby():
 
         # ── 詳情展開區 ──
         if is_expanded:
-            st.markdown("""
-<div style="border-left:3px solid #c0d0f0;margin:0.2rem 0 0.8rem 0.8rem;padding:0.8rem 1rem 0.5rem 1.2rem;
-            background:rgba(255,255,255,0.7);border-radius:0 8px 8px 0">
-</div>""", unsafe_allow_html=True)
             with st.container():
                 col_d1, col_d2 = st.columns(2)
                 with col_d1:
