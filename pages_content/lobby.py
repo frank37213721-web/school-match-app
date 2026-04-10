@@ -231,8 +231,10 @@ def render_lobby():
         {f'<div style="margin-bottom:0.5rem">{tags_html}</div>' if tags_html else ''}
         <div style="font-size:1.08rem;font-weight:700;color:#1a2340;margin-bottom:0.35rem;
                     white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{c['title']}</div>
-        <div style="font-size:0.82rem;color:#5a6a8a;margin-bottom:0.3rem">
-            🏫 {school_name}{'&nbsp;·&nbsp;' + district if district else ''}&nbsp;&nbsp;🗓️ {time_str}
+        <div style="margin-bottom:0.3rem">
+            <span style="font-size:0.95rem;font-weight:700;color:#1a3060">🏫 {school_name}</span>
+            {f'<span style="font-size:0.82rem;color:#7a8aaa">&nbsp;·&nbsp;{district}</span>' if district else ''}
+            <span style="font-size:0.82rem;color:#7a8aaa">&nbsp;&nbsp;🗓️ {time_str}</span>
         </div>
         <div style="font-size:0.8rem;color:#5a6a8a">
             📊 目前：✅ 已核准 {approved_count} 所&nbsp;&nbsp;⏳ 待審 {pending_count} 所
