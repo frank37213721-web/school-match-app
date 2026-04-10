@@ -2,7 +2,7 @@ import streamlit as st
 from utils import supabase, send_email, is_valid_email
 
 COURSE_TYPES = ["部定必修", "加深加廣選修", "校訂必修", "多元選修", "彈性課程"]
-PAGE_SIZE = 20
+PAGE_SIZE = 5
 
 
 def render_lobby():
@@ -155,54 +155,83 @@ def render_lobby():
         is_full        = total_active >= max_schools
         is_own         = logged_in_school_id is not None and c.get('host_school_id') == logged_in_school_id
 
-        detail_key  = f"detail_{c['id']}"
-        apply_key   = f"show_matching_{c['id']}"
+        detail_key = f"detail_{c['id']}"
+        apply_key  = f"show_matching_{c['id']}"
         if detail_key not in st.session_state:
             st.session_state[detail_key] = False
         if apply_key not in st.session_state:
             st.session_state[apply_key] = False
 
-        with st.container(border=True):
-            # ── 卡片主列 ──
-            col_main, col_status, col_btn = st.columns([6, 2, 2])
+        school_info = c.get('schools', {})
+        district    = school_info.get('district', '')
+        school_name = school_info.get('name', '')
+        time_str    = c.get('start_time', '未設定')
 
-            with col_main:
-                # 標籤列
-                tags = []
-                if c.get('course_type'):
-                    tags.append(f"`{c['course_type']}`")
-                if c.get('credits'):
-                    tags.append(f"`{c['credits']} 學分`")
-                if tags:
-                    st.markdown(" ".join(tags))
-                # 課程名稱（大標）
-                st.markdown(f"**{c['title']}**")
-                # 學校 · 分區 · 時間（小字）
-                school_info = c.get('schools', {})
-                district    = school_info.get('district', '')
-                school_name = school_info.get('name', '')
-                time_str    = c.get('start_time', '未設定')
-                st.caption(f"🏫 {school_name}　{'· ' + district if district else ''}　🗓️ {time_str}")
+        # 狀態標籤 HTML
+        if is_full:
+            status_html = "<span style='color:#c0392b;font-weight:700;font-size:0.92rem'>🔴 名額已滿</span>"
+        elif approved_count > 0:
+            status_html = f"<span style='color:#b07800;font-weight:700;font-size:0.92rem'>🟡 {approved_count}/{max_schools} 所</span>"
+        else:
+            status_html = f"<span style='color:#1a7a40;font-weight:700;font-size:0.92rem'>🟢 開放中 {approved_count}/{max_schools}</span>"
 
-            with col_status:
-                if is_full:
-                    st.markdown("<div style='color:#e05555;font-weight:600;padding-top:0.8rem'>🔴 名額已滿</div>", unsafe_allow_html=True)
-                elif approved_count > 0:
-                    st.markdown(f"<div style='color:#d08800;font-weight:600;padding-top:0.8rem'>🟡 {approved_count}/{max_schools} 所</div>", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"<div style='color:#2563a8;font-weight:600;padding-top:0.8rem'>🟢 開放中 0/{max_schools}</div>", unsafe_allow_html=True)
+        # 標籤列 HTML
+        tags_html = ""
+        if c.get('course_type'):
+            tags_html += f"<span style='background:#dbeafe;color:#1d4ed8;padding:2px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;margin-right:6px'>{c['course_type']}</span>"
+        if c.get('credits'):
+            tags_html += f"<span style='background:#ede9fe;color:#6d28d9;padding:2px 10px;border-radius:20px;font-size:0.75rem;font-weight:600'>{c['credits']} 學分</span>"
 
-            with col_btn:
-                st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
-                if st.button("詳情 ▾" if not st.session_state[detail_key] else "詳情 ▴",
-                             key=f"dtl_{c['id']}", use_container_width=True):
-                    st.session_state[detail_key] = not st.session_state[detail_key]
-                    st.session_state[apply_key] = False
-                    st.rerun()
+        # 卡片 HTML（白底＋藍左線＋陰影）
+        is_expanded = st.session_state[detail_key]
+        bottom_radius = "0 0 0 0" if is_expanded else "0 12px 12px 0"
+        st.markdown(f"""
+<div style="
+    background: #ffffff;
+    border-left: 4px solid #2563a8;
+    border-radius: 12px 12px {bottom_radius};
+    padding: 1.1rem 1.6rem 1rem 1.4rem;
+    box-shadow: 0 4px 18px rgba(30,50,120,0.12), 0 1px 4px rgba(30,50,120,0.07);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0;
+">
+    <div style="flex:1; min-width:0">
+        {f'<div style="margin-bottom:0.45rem">{tags_html}</div>' if tags_html else ''}
+        <div style="font-size:1.05rem;font-weight:700;color:#1a2340;margin-bottom:0.3rem;
+                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{c['title']}</div>
+        <div style="font-size:0.82rem;color:#5a6a8a">
+            🏫 {school_name}{'&nbsp;·&nbsp;' + district if district else ''}&nbsp;&nbsp;🗓️ {time_str}
+        </div>
+    </div>
+    <div style="flex-shrink:0;text-align:right">
+        {status_html}
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-            # ── 詳情展開區 ──
-            if st.session_state[detail_key]:
-                st.markdown("---")
+        # 詳情按鈕列（緊接卡片底部）
+        _, col_det = st.columns([8, 2])
+        with col_det:
+            if st.button(
+                "收起 ▴" if is_expanded else "詳情 ▾",
+                key=f"dtl_{c['id']}", use_container_width=True
+            ):
+                st.session_state[detail_key] = not is_expanded
+                st.session_state[apply_key] = False
+                st.rerun()
+
+        # ── 詳情展開區 ──
+        if is_expanded:
+            with st.container():
+                st.markdown("""
+<div style="background:#f8faff;border-left:4px solid #2563a8;border-radius:0 0 12px 12px;
+            padding:1rem 1.6rem 1.2rem 1.4rem;margin-top:-0.5rem;
+            box-shadow:0 6px 18px rgba(30,50,120,0.10)">
+</div>
+""", unsafe_allow_html=True)
                 col_d1, col_d2 = st.columns(2)
                 with col_d1:
                     if c.get('course_type'):
