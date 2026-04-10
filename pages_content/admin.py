@@ -1,4 +1,6 @@
 from collections import defaultdict
+import io
+import pandas as pd
 import streamlit as st
 from utils import supabase, require_admin, delete_school_cascade
 from school_codes_data import SCHOOL_CODE_MAP, SCHOOLS_BY_DISTRICT
@@ -202,6 +204,84 @@ def _render_registry_tab():
 
             st.success(f"匯入完成：新增 {imported} 筆，略過 {skipped} 筆")
             st.rerun()
+
+    # ── 下載目前清單 ──
+    if all_reg:
+        df_dl = pd.DataFrame([
+            {"代碼": r.get("code") or "", "學校名稱": r["name"], "分區": r.get("district") or ""}
+            for r in all_reg
+        ])
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+            df_dl.to_excel(writer, index=False, sheet_name="school_registry")
+        st.download_button(
+            "📥 下載目前學校清單（Excel）",
+            data=buf.getvalue(),
+            file_name="school_registry.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    # ── 上傳 Excel 更新 ──
+    with st.expander("📤 上傳 Excel 更新學校清單"):
+        st.caption("欄位需包含：**代碼**（選填）、**學校名稱**（必填）、**分區**（選填）。相同代碼或名稱的資料若有差異則覆蓋，不存在則新增，原有但未出現在檔案中的資料保留不刪除。")
+        uploaded = st.file_uploader("選擇 Excel 檔案（.xlsx）", type=["xlsx"], key="reg_upload")
+        if uploaded:
+            try:
+                df_up = pd.read_excel(uploaded, dtype=str).fillna("")
+                # 欄位對應（允許中英文欄名）
+                col_map = {}
+                for col in df_up.columns:
+                    if col in ("代碼", "code", "Code"):
+                        col_map["code"] = col
+                    elif col in ("學校名稱", "name", "Name"):
+                        col_map["name"] = col
+                    elif col in ("分區", "district", "District"):
+                        col_map["district"] = col
+
+                if "name" not in col_map:
+                    st.error("❌ 找不到「學校名稱」欄位，請確認欄位名稱。")
+                else:
+                    rows = []
+                    for _, row in df_up.iterrows():
+                        rows.append({
+                            "code": row.get(col_map.get("code", ""), "").strip().upper() or None,
+                            "name": row[col_map["name"]].strip(),
+                            "district": row.get(col_map.get("district", ""), "").strip(),
+                        })
+                    rows = [r for r in rows if r["name"]]  # 過濾空名稱
+
+                    st.write(f"讀取到 **{len(rows)}** 筆資料，預覽：")
+                    st.dataframe(pd.DataFrame(rows).head(10), use_container_width=True, hide_index=True)
+
+                    if st.button("✅ 確認匯入", type="primary", key="confirm_upload"):
+                        existing_by_code = {r["code"]: r for r in all_reg if r.get("code")}
+                        existing_by_name = {r["name"]: r for r in all_reg}
+                        added = updated = skipped = 0
+                        for r in rows:
+                            # 優先以代碼比對，否則以名稱比對
+                            existing = existing_by_code.get(r["code"]) if r["code"] else None
+                            if existing is None:
+                                existing = existing_by_name.get(r["name"])
+
+                            if existing is None:
+                                supabase.table("school_registry").insert(r).execute()
+                                added += 1
+                            else:
+                                changed = {
+                                    k: v for k, v in r.items()
+                                    if v != (existing.get(k) or "") and not (v is None and not existing.get(k))
+                                }
+                                if changed:
+                                    supabase.table("school_registry").update(changed).eq("id", existing["id"]).execute()
+                                    updated += 1
+                                else:
+                                    skipped += 1
+                        st.success(f"✅ 完成：新增 {added} 筆，更新 {updated} 筆，未變動 {skipped} 筆")
+                        st.rerun()
+            except Exception as e:
+                st.error(f"讀取 Excel 失敗：{e}")
+
+    st.divider()
 
     if all_reg:
         all_districts_reg = sorted({r.get("district", "") for r in all_reg})
